@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ascend-compat"
-version = "0.7.0"
+version = "0.8.0"
 description = "CUDA-to-Ascend ecosystem compatibility bridge — fixes the last mile between torch_npu and your existing CUDA code"
 readme = "README.md"
 license = {text = "Apache-2.0"}
@@ -52,10 +52,10 @@ docs = [
 ascend-compat = "ascend_compat.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/ascend-compat/ascend-compat"
-Repository = "https://github.com/ascend-compat/ascend-compat"
-Documentation = "https://ascend-compat.readthedocs.io"
-Issues = "https://github.com/ascend-compat/ascend-compat/issues"
+Homepage = "https://github.com/JosephAhn23/cuda-morph"
+Repository = "https://github.com/JosephAhn23/cuda-morph"
+Documentation = "https://github.com/JosephAhn23/cuda-morph#readme"
+Issues = "https://github.com/JosephAhn23/cuda-morph/issues"
 
 [tool.setuptools.packages.find]
 where = ["src"]

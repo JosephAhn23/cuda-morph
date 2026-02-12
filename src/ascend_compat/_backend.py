@@ -1,20 +1,28 @@
 """Backend detection and capability probing.
 
 This module is the single source of truth for "what hardware is available right
-now?"  Every other module in ascend-compat imports from here rather than
+now?"  Every other module in cuda-morph imports from here rather than
 re-running its own detection logic.
 
 Architecture note
 -----------------
 We intentionally *lazy-import* ``torch``, ``torch_npu``, etc. so that
-``ascend-compat`` can be imported even when PyTorch isn't installed (useful
-for the CLI static-analysis tool ``ascend-compat check``).
+cuda-morph can be imported even when PyTorch isn't installed (useful
+for the CLI static-analysis tool ``cuda-morph check``).
 
-Detection priority
-------------------
-1. **Ascend NPU** via ``torch_npu``  – preferred when available
-2. **NVIDIA CUDA** via ``torch.cuda`` – used as reference / fallback
-3. **CPU** – always available, used for development & CI
+Multi-backend support
+---------------------
+cuda-morph supports multiple domestic AI chip backends:
+
+1. **Ascend NPU** via ``torch_npu`` (Huawei)
+2. **Cambricon MLU** via ``torch_mlu`` (Cambricon)
+3. **NVIDIA CUDA** via ``torch.cuda`` (reference/fallback)
+4. **CPU** — always available, used for development & CI
+
+Backend detection uses the pluggable registry in ``backends/``.  Each
+backend module implements a common protocol (``BackendInfo``).  The detection
+loop probes each registered backend in priority order and selects the first
+one that reports hardware available.
 
 Why a dedicated module?
 -----------------------
@@ -28,7 +36,7 @@ from __future__ import annotations
 
 import enum
 import functools
-from typing import Any, Optional
+from typing import Any, Dict, Optional, Type
 
 from ascend_compat._logging import get_logger
 
@@ -44,8 +52,18 @@ class Backend(enum.Enum):
     """Available compute backends, ordered by preference."""
 
     NPU = "npu"      # Huawei Ascend via torch_npu
+    MLU = "mlu"      # Cambricon via torch_mlu
     CUDA = "cuda"    # NVIDIA via torch.cuda
     CPU = "cpu"      # Always available
+
+
+# Map backend enum values to their device type strings
+_BACKEND_DEVICE_TYPES: Dict[str, Backend] = {
+    "npu": Backend.NPU,
+    "mlu": Backend.MLU,
+    "cuda": Backend.CUDA,
+    "cpu": Backend.CPU,
+}
 
 
 # ---------------------------------------------------------------------------
@@ -93,6 +111,24 @@ def _import_torch_npu() -> Optional[Any]:
 
 
 # ---------------------------------------------------------------------------
+# Active backend tracking
+# ---------------------------------------------------------------------------
+
+_active_backend_info: Optional[Any] = None  # BackendInfo subclass, set by activate()
+
+
+def get_active_backend_info() -> Optional[Any]:
+    """Return the active backend's BackendInfo, or None if not set."""
+    return _active_backend_info
+
+
+def set_active_backend_info(info: Optional[Any]) -> None:
+    """Set the active backend info (called by activate())."""
+    global _active_backend_info  # noqa: PLW0603
+    _active_backend_info = info
+
+
+# ---------------------------------------------------------------------------
 # Detection logic
 # ---------------------------------------------------------------------------
 
@@ -104,18 +140,71 @@ def detect_backends() -> tuple[Backend, ...]:
     The result is cached for the lifetime of the process because hardware
     doesn't change at runtime.
 
+    Detection order:
+    1. Check each registered backend in the pluggable registry
+    2. Check NVIDIA CUDA
+    3. CPU (always available)
+
     Returns:
         Tuple of :class:`Backend` values, ordered from most-preferred to
         least-preferred.
     """
     available: list[Backend] = []
 
-    # 1. Check for Ascend NPU via torch_npu
+    # 1. Check pluggable backends from the registry
+    try:
+        from ascend_compat.backends import BACKEND_REGISTRY
+        for name, backend_cls in BACKEND_REGISTRY.items():
+            try:
+                if backend_cls.is_available():
+                    device_type = backend_cls.device_type
+                    backend_enum = _BACKEND_DEVICE_TYPES.get(device_type)
+                    if backend_enum and backend_enum not in available:
+                        available.append(backend_enum)
+                        logger.info(
+                            "%s detected (%d device(s))",
+                            backend_cls.display_name,
+                            backend_cls.device_count(),
+                        )
+            except Exception as exc:  # noqa: BLE001
+                logger.warning(
+                    "Backend '%s' detection failed: %s", name, exc
+                )
+    except ImportError:
+        # Fallback: probe directly if backends package fails to import
+        logger.debug("backends package not available, using legacy detection")
+        _detect_legacy(available)
+
+    # 2. Check for NVIDIA CUDA (if not already found via registry)
+    if Backend.CUDA not in available:
+        torch = _import_torch()
+        if torch.cuda.is_available():
+            available.append(Backend.CUDA)
+            logger.info(
+                "NVIDIA CUDA detected (%d device(s))",
+                torch.cuda.device_count(),
+            )
+
+    # 3. CPU is always available
+    if Backend.CPU not in available:
+        available.append(Backend.CPU)
+
+    logger.debug("Detected backends (preference order): %s", available)
+    return tuple(available)
+
+
+def _detect_legacy(available: list[Backend]) -> None:
+    """Legacy detection path (before pluggable backends existed).
+
+    This is the fallback for when the ``backends`` subpackage can't be
+    imported (e.g. during early development or if the package structure
+    changes).
+    """
+    # Check for Ascend NPU
     npu_mod = _import_torch_npu()
     if npu_mod is not None:
         torch = _import_torch()
         try:
-            # torch_npu patches torch to add torch.npu.is_available()
             if hasattr(torch, "npu") and torch.npu.is_available():
                 available.append(Backend.NPU)
                 logger.info(
@@ -123,29 +212,14 @@ def detect_backends() -> tuple[Backend, ...]:
                     torch.npu.device_count(),
                 )
         except Exception as exc:  # noqa: BLE001
-            logger.warning("torch_npu is installed but NPU detection failed: %s", exc)
-
-    # 2. Check for NVIDIA CUDA
-    torch = _import_torch()
-    if torch.cuda.is_available():
-        available.append(Backend.CUDA)
-        logger.info(
-            "NVIDIA CUDA detected (%d device(s))",
-            torch.cuda.device_count(),
-        )
-
-    # 3. CPU is always available
-    available.append(Backend.CPU)
-
-    logger.debug("Detected backends (preference order): %s", available)
-    return tuple(available)
+            logger.warning("torch_npu installed but NPU detection failed: %s", exc)
 
 
 @functools.lru_cache(maxsize=1)
 def preferred_backend() -> Backend:
     """Return the single best backend for this system.
 
-    This drives the default behaviour of `import ascend_compat` — all CUDA
+    This drives the default behaviour of ``cuda-morph`` — all CUDA
     calls are routed to whichever backend this function returns.
     """
     return detect_backends()[0]
@@ -161,6 +235,11 @@ def has_npu() -> bool:
     return Backend.NPU in detect_backends()
 
 
+def has_mlu() -> bool:
+    """Return True if at least one Cambricon MLU is usable."""
+    return Backend.MLU in detect_backends()
+
+
 def has_cuda() -> bool:
     """Return True if at least one NVIDIA GPU is usable."""
     return Backend.CUDA in detect_backends()
@@ -169,7 +248,7 @@ def has_cuda() -> bool:
 def get_torch() -> Any:
     """Return the ``torch`` module (importing it if necessary).
 
-    This is the canonical way for other ascend-compat modules to get a
+    This is the canonical way for other cuda-morph modules to get a
     reference to torch without redundant try/except blocks.
     """
     return _import_torch()
@@ -189,8 +268,7 @@ def translate_device_string(device: str) -> str:
     """Translate a CUDA device string to the appropriate backend string.
 
     Mapping rules:
-    - If NPU is the preferred backend, ``"cuda"`` → ``"npu"``
-      and ``"cuda:N"`` → ``"npu:N"``
+    - If a domestic backend (NPU, MLU) is preferred, ``"cuda"`` → backend device type
     - If CUDA is preferred (or we're on CPU), return the string unchanged.
 
     Args:
@@ -205,12 +283,19 @@ def translate_device_string(device: str) -> str:
         # On an Ascend system:
         translate_device_string("cuda")    # → "npu"
         translate_device_string("cuda:2")  # → "npu:2"
-        translate_device_string("cpu")     # → "cpu"  (unchanged)
+
+        # On a Cambricon system:
+        translate_device_string("cuda")    # → "mlu"
+        translate_device_string("cuda:0")  # → "mlu:0"
+
+        # On CPU:
+        translate_device_string("cuda")    # → "cpu"
     """
     backend = preferred_backend()
 
-    if backend == Backend.NPU and device.startswith("cuda"):
-        translated = device.replace("cuda", "npu", 1)
+    if backend in (Backend.NPU, Backend.MLU) and device.startswith("cuda"):
+        target_type = backend.value  # "npu" or "mlu"
+        translated = device.replace("cuda", target_type, 1)
         logger.debug("Device string translated: %r → %r", device, translated)
         return translated
 
@@ -218,7 +303,7 @@ def translate_device_string(device: str) -> str:
         # No accelerator at all — fall back to CPU so the code doesn't crash.
         translated = "cpu"
         logger.warning(
-            "No GPU/NPU available — translating device %r → 'cpu'. "
+            "No GPU/NPU/MLU available — translating device %r → 'cpu'. "
             "Performance will be significantly lower.",
             device,
         )

@@ -81,7 +81,7 @@ class TestCLISmoke:
 
         info = show_info()
         assert "PyTorch version" in info
-        assert "ascend-compat" in info
+        assert "cuda-morph" in info
 
     def test_check_command_on_self(self):
         """ascend-compat check should work on a real Python file."""
