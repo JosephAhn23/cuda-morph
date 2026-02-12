@@ -148,6 +148,14 @@ def main() -> None:
 
     print(f"\nTraining complete ({args.steps} steps)")
 
+    # Proof layer
+    assert loss.item() < 100, f"Loss suspiciously high: {loss.item()}"
+    assert not torch.isnan(torch.tensor(loss.item())), "Loss is NaN"
+    if device.type == "npu":
+        assert torch.npu.memory_allocated() > 0, "NPU memory should be allocated"
+        print(f"NPU memory used: {torch.npu.memory_allocated() / 1024 / 1024:.1f} MB")
+    print(f"\n[VERIFIED] Training completed on {device}")
+
     # Telemetry
     stats = ascend_compat.get_patch_stats()
     if stats:

@@ -714,6 +714,16 @@ def main(argv: Optional[List[str]] = None) -> int:
         help="Verify torch_npu and CANN binary integrity",
     )
 
+    # verify command
+    verify_parser = subparsers.add_parser(
+        "verify",
+        help="Empirically verify operator correctness on current device",
+    )
+    verify_parser.add_argument(
+        "--device", default="cpu",
+        help="Device to verify on: 'npu', 'cuda', or 'cpu' (default: cpu)",
+    )
+
     # info command
     subparsers.add_parser("info", help="Show system info and shim status")
 
@@ -843,6 +853,16 @@ def main(argv: Optional[List[str]] = None) -> int:
         print(format_security_report(results))
         errors = sum(1 for r in results if r.status == "error")
         return 1 if errors else 0
+
+    elif args.command == "verify":
+        from ascend_compat.validation import OperatorVerifier
+        verifier = OperatorVerifier(device=args.device)
+        print(f"Running operator verification on device={args.device}...")
+        print(f"(Use --device npu on Ascend hardware for real validation)\n")
+        results = verifier.run_all()
+        print(verifier.format_report(results))
+        failed = sum(1 for r in results if not r.passed)
+        return 1 if failed else 0
 
     elif args.command == "info":
         print(show_info())

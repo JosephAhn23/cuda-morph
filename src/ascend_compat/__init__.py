@@ -93,7 +93,7 @@ from __future__ import annotations
 import os
 import warnings
 
-__version__ = "0.6.0"
+__version__ = "0.7.0"
 
 # Core infrastructure (always available — no side effects)
 from ascend_compat._backend import (

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ascend-compat"
-version = "0.6.0"
+version = "0.7.0"
 description = "CUDA-to-Ascend ecosystem compatibility bridge — fixes the last mile between torch_npu and your existing CUDA code"
 readme = "README.md"
 license = {text = "Apache-2.0"}
@@ -66,6 +66,7 @@ addopts = "-v --tb=short"
 markers = [
     "benchmark: performance regression tests (may be slow)",
     "stress: stability/load tests (long-running, may use significant memory)",
+    "hardware: requires real Ascend NPU hardware (skipped without --run-hardware)",
 ]
 
 [tool.mypy]

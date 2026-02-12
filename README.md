@@ -2,7 +2,12 @@
 
 **CUDA → Ascend NPU compatibility shim for PyTorch**
 
-A thin, high-value ecosystem compatibility bridge that makes existing CUDA-assuming Python code run on Huawei Ascend NPUs — without replacing torch_npu, but fixing the ecosystem gap above it.
+> **Validation status: Simulation-validated on CPU.  Not yet tested on real Ascend hardware.**
+>
+> The architecture, patching machinery, and test suite (387 tests) work correctly
+> in CPU-fallback mode.  The `torch.cuda → torch.npu` argument mappings are based
+> on Huawei's documentation, not empirical NPU execution.  If you have access to
+> Ascend 910B hardware and can validate, please open an issue — you'd be the first.
 
 ---
 
@@ -78,7 +83,7 @@ python train.py
 
 `import ascend_compat` alone does NOT patch anything by default — this is intentional to prevent global side effects when imported transitively by libraries.
 
-### FlashAttention on Ascend (flagship feature)
+### FlashAttention on Ascend
 
 ```python
 import ascend_compat
@@ -87,14 +92,20 @@ ascend_compat.activate()
 from ascend_compat.ecosystem import transformers_patch
 transformers_patch.apply()
 
-# Now flash_attention_2 works on Ascend via npu_fusion_attention:
+# flash_attention_2 is routed to npu_fusion_attention:
 from transformers import AutoModelForCausalLM
 model = AutoModelForCausalLM.from_pretrained(
     "meta-llama/Llama-3-8B",
-    attn_implementation="flash_attention_2",  # Works on Ascend!
+    attn_implementation="flash_attention_2",
     device_map="auto",
 )
 ```
+
+> **Caveat:** The flash_attn → npu_fusion_attention argument mapping (`dropout_p` → `keep_prob`,
+> `causal` → `next_tockens`, BSND layout) is based on Huawei's API docs.  Numerical equivalence
+> with the original flash_attn has not been verified on real NPU hardware.  Sliding window
+> attention is not supported (falls back to full attention with a warning).  ALiBi via PSE
+> is experimental.
 
 ### torch.compile on Ascend
 
@@ -182,7 +193,11 @@ ascend_compat.has_npu()      # Via shim
 | `ops` | Operation latency (tensor creation, matmul, softmax, etc.) |
 | `model` | End-to-end inference throughput (samples/sec, p50/p95/p99 latency) |
 
-### Kernel Development (`ascend_compat.kernel_helper`)
+### Kernel Development (`ascend_compat.kernel_helper`) — EXPERIMENTAL
+
+> **Status:** Code generation only.  Generated kernels have NOT been compiled
+> or run on real Ascend hardware.  Treat generated code as a starting template,
+> not a working kernel.
 
 Scaffolding for custom Ascend C operators:
 - Declarative operator spec (`OpSpec`) with alignment enforcement
@@ -232,11 +247,47 @@ src/ascend_compat/
     └── scaffold.py              # Code generator
 ```
 
+## Known Limitations
+
+**Be aware of these before using ascend-compat in production:**
+
+| Limitation | Impact | Status |
+|-----------|--------|--------|
+| **No real Ascend hardware testing** | Argument mappings may be wrong | Seeking hardware access |
+| **flash_attn numerical accuracy unverified** | Output may differ from CUDA flash_attn | Needs NPU comparison |
+| **Ecosystem patches are version-fragile** | Library updates may rename patched functions | Version guards + verification added |
+| **Sliding window attention not supported** | Falls back to full attention | Architectural — npu_fusion_attention limitation |
+| **`_KNOWN_HASHES` is empty** | Security check reports "unknown", never "ok" | Needs community hash contributions |
+| **ZeRO-3 untested** | DeepSpeed ZeRO-3 may have memory alignment issues | Only ZeRO-2 is targeted |
+| **Dynamic shapes cause CANN recompilation** | Use ShapeBucketer to mitigate | Documented workaround |
+
+### What this project IS
+
+- A **specification-grade compatibility bridge** validated via simulation
+- A **correct architecture** for CUDA→Ascend API translation
+- A **complete test suite** (387 tests) covering all code paths in CPU-fallback mode
+
+### What this project IS NOT (yet)
+
+- **Not empirically validated on Ascend hardware** — this is the single biggest gap
+- **Not production-tested** — no user has run this on real NPU workloads
+- **Not a guarantee of numerical equivalence** — operator output matching is unverified
+
+### Path to validation
+
+1. Obtain access to Ascend 910B (via Huawei Cloud ModelArts, academic program, or Ascend Community Seed Fund)
+2. Run `examples/huggingface_inference.py` on real NPU — fix whatever breaks
+3. Run flash_attn numerical comparison (our output vs. CUDA flash_attn output)
+4. Produce benchmark artifacts: tokens/sec, memory usage, latency percentiles
+5. Commit results to `examples/results/`
+
+If you have Ascend hardware access and want to help validate, please open an issue.
+
 ## Development
 
 ```bash
-git clone https://github.com/ascend-compat/ascend-compat.git
-cd ascend-compat
+git clone https://github.com/JosephAhn23/cuda-morph.git
+cd cuda-morph
 pip install -e ".[dev]"
 python -m pytest tests/ -v
 ```

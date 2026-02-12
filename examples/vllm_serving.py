@@ -124,6 +124,13 @@ def run_sample_inference(model_name: str) -> None:
         print(f"\n  Prompt:    {prompt}")
         print(f"  Generated: {generated[:100]}...")
 
+    # Proof layer
+    assert len(outputs) == len(prompts), "Should have one output per prompt"
+    for output in outputs:
+        assert len(output.outputs) > 0, "Each prompt should produce at least one output"
+        assert len(output.outputs[0].text) > 0, "Generated text should be non-empty"
+    print(f"\n[VERIFIED] vLLM inference produced {len(outputs)} outputs")
+
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="vLLM on Ascend NPU example")

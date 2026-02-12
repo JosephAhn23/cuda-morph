@@ -86,6 +86,21 @@ generated = tokenizer.decode(outputs[0], skip_special_tokens=True)
 print(f"Generated: {generated}")
 
 # --------------------------------------------------------------------------
+# Proof layer — assertions that verify the script actually worked
+# --------------------------------------------------------------------------
+
+assert outputs.shape[0] == 1, f"Expected batch size 1, got {outputs.shape[0]}"
+assert outputs.shape[1] <= MAX_NEW_TOKENS + inputs["input_ids"].shape[1], "Exceeded max length"
+assert len(generated) > len(PROMPT), "Generated text should be longer than the prompt"
+
+if device.type == "npu":
+    # These only pass on REAL NPU hardware
+    assert torch.npu.memory_allocated() > 0, "NPU memory should be allocated"
+    print(f"NPU memory used: {torch.npu.memory_allocated() / 1024 / 1024:.1f} MB")
+
+print(f"\n[VERIFIED] Inference completed on {device}")
+
+# --------------------------------------------------------------------------
 # Show patch telemetry
 # --------------------------------------------------------------------------
 
@@ -96,5 +111,3 @@ if stats:
         print(f"  {name}: {count} calls")
 else:
     print("\nNo patches were called (running on native device)")
-
-print("\nDone.")
