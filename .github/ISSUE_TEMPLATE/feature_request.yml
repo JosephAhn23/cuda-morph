@@ -1,0 +1,40 @@
+name: Feature Request
+description: Suggest a new feature or ecosystem patch
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: dropdown
+    id: layer
+    attributes:
+      label: Which layer does this affect?
+      options:
+        - "Layer 2: cuda_shim (torch.cuda API mapping)"
+        - "Layer 3: ecosystem (library-specific patches)"
+        - "Layer 4: doctor (diagnostics/tooling)"
+        - "CLI tooling"
+        - "Documentation"
+        - "Other"
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Feature Description
+      description: What should ascend-compat do?
+    validations:
+      required: true
+
+  - type: textarea
+    id: motivation
+    attributes:
+      label: Motivation
+      description: What problem does this solve? What library/workflow breaks without it?
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+      description: Other approaches you've tried or considered

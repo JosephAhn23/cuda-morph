@@ -1,0 +1,58 @@
+name: Operator Incompatibility
+description: Report an operator that doesn't work on Ascend NPU
+title: "[Op]: "
+labels: ["operator", "compatibility"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Report an operator that fails, falls back to CPU, or produces incorrect results on Ascend.
+
+  - type: input
+    id: operator
+    attributes:
+      label: Operator Name
+      description: "e.g. torch.unique, aten::_fft_r2c, F.grid_sample"
+      placeholder: "torch.xxx"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: behavior
+    attributes:
+      label: Behavior on Ascend
+      options:
+        - Falls back to CPU (slow but correct)
+        - Produces incorrect results
+        - Crashes with error
+        - Not available (ImportError/AttributeError)
+    validations:
+      required: true
+
+  - type: textarea
+    id: error-code
+    attributes:
+      label: CANN Error Code (if applicable)
+      description: "Run `ascend-compat error <code>` if you have one"
+      render: text
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Minimal Reproduction
+      render: python
+    validations:
+      required: true
+
+  - type: textarea
+    id: workaround
+    attributes:
+      label: Known Workaround
+      description: "If you found a workaround, share it here"
+
+  - type: textarea
+    id: doctor-output
+    attributes:
+      label: Doctor Output
+      description: "Paste `ascend-compat doctor` output"
+      render: text
