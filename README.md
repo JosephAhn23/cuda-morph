@@ -1,30 +1,25 @@
 # cuda-morph
 
-**Zero-code CUDA → domestic AI chip migration for PyTorch**
-
-Write once. Run on any domestic chip. No code changes.
+**One import. Zero code changes. Run PyTorch on any non-NVIDIA accelerator.**
 
 ```python
 import cuda_morph
 cuda_morph.activate()
 
-# Your existing CUDA code runs on Ascend, Cambricon, or any supported backend.
-# No changes below this line.
+# Your existing code. Unchanged. Runs on AMD, Intel, Ascend, Cambricon.
 model = AutoModelForCausalLM.from_pretrained("meta-llama/Llama-3-8B").cuda()
 output = model.generate(**inputs)
 ```
 
 ---
 
-## Why this exists
+## What this is
 
-China is deploying **100,000+ domestic AI chips** across national computing clusters. Over 5,300 AI enterprises are migrating from NVIDIA CUDA to domestic hardware — Huawei Ascend, Cambricon MLU, and others.
+cuda-morph is a runtime shim that intercepts `torch.cuda` calls and routes them to whatever accelerator is actually present — AMD ROCm, Intel XPU, Huawei Ascend, Cambricon MLU, or any future PyTorch backend.
 
-**The hardware works. The software ecosystem doesn't follow.**
+**The problem it solves:** The global AI software ecosystem is locked to NVIDIA CUDA. HuggingFace, DeepSpeed, vLLM, flash-attn, and thousands of training scripts hard-code `torch.cuda`. On any non-NVIDIA hardware, this triggers `AssertionError: Torch not compiled with CUDA enabled`. The fix requires weeks of manual porting per project.
 
-Every AI framework, every HuggingFace model, every DeepSpeed training script hard-codes `torch.cuda`. On domestic hardware, this triggers `AssertionError: Torch not compiled with CUDA enabled`. The fix requires weeks of manual porting per project, per team, per enterprise.
-
-cuda-morph eliminates this. **Zero code changes. Instant migration.**
+cuda-morph eliminates this.
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -34,188 +29,112 @@ cuda-morph eliminates this. **Zero code changes. Instant migration.**
 │  cuda-morph                                                     │
 │  Intercepts torch.cuda → routes to detected backend             │
 │  Patches ecosystem libraries (HuggingFace, DeepSpeed, vLLM)    │
-├────────────────┬───────────────────┬────────────────────────────┤
-│  Ascend NPU    │  Cambricon MLU    │  (future backends)         │
-│  torch_npu     │  torch_mlu        │                            │
-│  CANN / HCCL   │  BANG / CNCL      │                            │
-├────────────────┴───────────────────┴────────────────────────────┤
-│  PyTorch PrivateUse1 dispatch (zero overhead)                   │
+├──────────┬──────────┬──────────┬──────────┬─────────────────────┤
+│  AMD     │  Intel   │  Ascend  │Cambricon │  (future backends)  │
+│  ROCm    │  XPU     │  NPU    │  MLU     │                     │
+│  HIP     │  oneAPI  │  CANN   │  BANG    │                     │
+│  RCCL    │  oneCCL  │  HCCL   │  CNCL   │                     │
+├──────────┴──────────┴──────────┴──────────┴─────────────────────┤
+│  PyTorch backend dispatch                                       │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-## The fragmentation problem
+## Prior art and positioning
 
-Each domestic chip vendor ships their own PyTorch adapter:
+**This project does not compete with [FlagOS/FlagScale](https://github.com/FlagOpen/FlagScale).** FlagOS is a state-backed, production-validated ecosystem with 658 contributors, 65 partners, and institutional support. It covers operators, compilers, parallelism frameworks, and kernel generation for 12+ domestic Chinese chips. It is excellent. Use it if it fits your needs.
 
-| Vendor | Chip | Adapter | Collective | Runtime |
-|--------|------|---------|------------|---------|
-| Huawei | Ascend 910B | `torch_npu` | HCCL | CANN |
-| Cambricon | MLU370/590 | `torch_mlu` | CNCL | BANG |
-| Biren | BR100 | `torch_br` | — | BiRen RT |
+cuda-morph occupies different ground:
 
-A developer who learns Ascend cannot easily move to Cambricon. A team that ports to Cambricon must re-port for Ascend. **This fragmentation is a national-scale problem.**
+| | FlagOS | cuda-morph |
+|---|--------|-----------|
+| **Scope** | Full-stack AI infra (operators, compilers, parallelism) | Runtime shim only (zero-code migration) |
+| **Backends** | 12+ Chinese chips + NVIDIA | Chinese chips + AMD + Intel + future |
+| **Approach** | Deep optimization (rewrite operators, generate kernels) | Thin interception (patch torch.cuda at runtime) |
+| **Users** | Enterprises with engineering teams | Anyone who wants to run existing code on non-NVIDIA hardware |
+| **Validation** | Production-deployed | Simulation-validated (seeking hardware partners) |
+| **Goal** | China AI self-sufficiency | Break CUDA lock-in globally |
 
-cuda-morph solves it: **one import, one API, all domestic hardware.**
+Similarly, [SCALE](https://docs.scale-lang.com/) and [ZLUDA](https://github.com/vosen/ZLUDA) provide AMD/Intel CUDA compatibility at the driver/binary level. cuda-morph works at the Python/PyTorch level — higher up the stack, less performance-optimal, but zero-friction and framework-aware.
 
----
+## Supported backends
 
-## Quick Start
+| Backend | Chip | Adapter | Status |
+|---------|------|---------|--------|
+| **AMD ROCm** | MI210, MI250X, MI300X | PyTorch ROCm build | Stub + detection |
+| **Intel XPU** | Max 1550, Flex, Arc | `intel-extension-for-pytorch` | Stub + detection |
+| **Huawei Ascend** | 910B, 310P | `torch_npu` | Architecture complete, 400+ tests |
+| **Cambricon** | MLU370, MLU590 | `torch_mlu` | Stub + detection |
+
+### What "stub + detection" means
+
+The backend module can detect whether hardware is present and what version of the adapter is installed. The ecosystem patches (flash_attn routing, collective backend mapping, etc.) are not yet implemented for that backend. The Ascend backend has the most complete implementation.
+
+## Quick start
 
 ```bash
 pip install cuda-morph
 ```
 
-### Run existing scripts unchanged
+```bash
+# Run existing scripts unchanged:
+cuda-morph run train.py --epochs 10
+
+# Or activate in code:
+import cuda_morph
+cuda_morph.activate()
+```
+
+### Check what's detected
 
 ```bash
-cuda-morph run train.py --epochs 10
+$ cuda-morph info
+
+cuda-morph system info
+==================================================
+Preferred backend:   cpu
+Has Ascend NPU:      False
+Has Cambricon MLU:   False
+Has AMD ROCm:        False
+Has Intel XPU:       False
+
+Registered backends:
+  [--] Huawei Ascend NPU         adapter=torch_npu    (not installed)
+  [--] Cambricon MLU             adapter=torch_mlu    (not installed)
+  [--] AMD ROCm                  adapter=torch        (not detected)
+  [--] Intel GPU (XPU)           adapter=intel_ext... (not installed)
 ```
 
-### Or activate in code (two lines)
-
-```python
-import cuda_morph
-cuda_morph.activate()   # Detect hardware, patch torch.cuda
-
-import torch
-device = torch.device("cuda")   # → torch.device("npu") on Ascend
-x = torch.randn(3, 3).cuda()   # → .npu() on Ascend, .mlu() on Cambricon
-model = MyModel().cuda()        # → routes to detected backend
-```
-
-### Explicit backend selection
-
-```python
-cuda_morph.activate(backend="ascend")     # Force Ascend NPU
-cuda_morph.activate(backend="cambricon")  # Force Cambricon MLU
-cuda_morph.activate()                     # Auto-detect (default)
-```
-
-## Supported Backends
-
-### Ascend NPU (Huawei) — Primary
-
-**Status:** Architecture complete. Simulation-validated (407 tests). Awaiting hardware validation.
-
-- `torch.cuda.*` → `torch.npu.*` API translation
-- flash_attn → `npu_fusion_attention` argument mapping
-- HuggingFace `device_map="auto"` fix
-- DeepSpeed HCCL backend selection
-- vLLM attention routing
-- CANN error code translation (50+ codes)
-- `torch.compile` → torchair backend
-
-### Cambricon MLU — In Development
-
-**Status:** Backend stub with detection logic. Seeking hardware access for validation.
-
-- `torch.cuda.*` → `torch.mlu.*` API translation
-- `torch.device("cuda")` → `torch.device("mlu")`
-- NCCL → CNCL collective backend mapping
-- `CUDA_VISIBLE_DEVICES` → `MLU_VISIBLE_DEVICES`
-
-### Future Backends
-
-The architecture supports any PyTorch PrivateUse1 backend. Adding a new vendor requires:
-
-1. A backend module in `cuda_morph/backends/<vendor>/`
-2. Detection logic (is the adapter installed? is hardware present?)
-3. A device-string mapping (`"cuda"` → `"<device_type>"`)
-4. Collective backend mapping (NCCL → vendor equivalent)
-
-## Ecosystem Patches
+## Ecosystem patches
 
 | Library | What cuda-morph fixes |
 |---------|----------------------|
-| `flash_attn` | Drop-in replacement wrapping vendor-specific fused attention |
-| HuggingFace `transformers` | `device_map="auto"`, flash_attn_2 detection |
-| DeepSpeed | HCCL/CNCL backend, timer.py stream sync, visible devices |
-| vLLM | Custom op compilation, attention backend routing, quantization |
-| Triton | Triton-Ascend integration, CUDA kernel pattern detection |
+| `flash_attn` | Routes to vendor-specific fused attention (npu_fusion_attention, CK, etc.) |
+| HuggingFace `transformers` | `device_map="auto"` on non-CUDA devices |
+| DeepSpeed | HCCL/CNCL/RCCL/oneCCL collective backend selection |
+| vLLM | Custom op compilation, attention backend routing |
+| Triton | Triton-Ascend integration, kernel pattern detection |
 
-## CLI Tools
+## CLI tools
 
 ```bash
-cuda-morph doctor           # Check versions, hardware, compatibility
-cuda-morph doctor --full    # Deep validation (runtime dirs, driver, firmware)
-cuda-morph error 507035     # Translate CANN error codes
-cuda-morph check model.py   # Scan for CUDA dependencies
-cuda-morph port model.py    # Auto-rewrite simple CUDA calls
-cuda-morph verify --device npu   # Empirically verify operator correctness
-cuda-morph bench overhead   # Measure shim proxy overhead
-cuda-morph bench ops        # Measure operation latency
-cuda-morph info             # Show detected hardware and backends
+cuda-morph check model.py    # Scan for CUDA hard-coding
+cuda-morph port model.py     # Auto-rewrite simple CUDA calls
+cuda-morph doctor            # Environment diagnostics
+cuda-morph verify --device npu  # Empirical operator verification
+cuda-morph bench overhead    # Measure shim overhead
+cuda-morph info              # Show all detected backends
 ```
 
-## Critical Design Decision: `torch.cuda.is_available()` → `False`
+## Validation status
 
-torch_npu's `transfer_to_npu` makes `is_available()` return `True`. This causes HuggingFace accelerate to select NCCL as the distributed backend — which doesn't exist on Ascend. HCCL is the correct backend.
-
-By making `is_available()` return `False`, we force libraries to fall through to their NPU/MLU detection paths.
-
-```python
-torch.npu.is_available()     # Direct check (Ascend)
-torch.mlu.is_available()     # Direct check (Cambricon)
-cuda_morph.has_npu()         # Via shim
-cuda_morph.has_mlu()         # Via shim
-```
-
-## Validation Status
-
-> **Honest assessment:** cuda-morph is simulation-validated, not hardware-validated.
+> cuda-morph is simulation-validated, not hardware-validated.
 >
-> The architecture, patching machinery, and 407-test suite work correctly in
-> CPU-fallback mode. Argument mappings are based on vendor documentation, not
-> empirical execution. See [VALIDATION_STATUS.md](VALIDATION_STATUS.md) for
-> the full breakdown of what is and isn't proven.
+> 420+ tests pass in CPU-fallback mode. Argument mappings are based on
+> vendor documentation, not empirical execution. See
+> [VALIDATION_STATUS.md](VALIDATION_STATUS.md) for the full breakdown.
 
-To run hardware validation (on Ascend NPU):
-
-```bash
-pytest tests/ --run-hardware -v       # Real NPU tests
-cuda-morph verify --device npu        # Operator correctness check
-```
-
-## Known Limitations
-
-| Limitation | Impact | Status |
-|-----------|--------|--------|
-| **No real hardware testing** | Argument mappings may be wrong | Seeking hardware partnerships |
-| **flash_attn accuracy unverified** | Output may differ from CUDA | Needs NPU numerical comparison |
-| **Ecosystem patches are version-fragile** | Library updates may break patches | Version guards added |
-| **Cambricon backend is a stub** | Detection only, no ecosystem patches yet | Needs MLU hardware |
-| **ZeRO-3 untested** | Memory alignment may differ | Only ZeRO-2 targeted |
-
-## Project Structure
-
-```
-src/cuda_morph/
-├── __init__.py                  # Public API, opt-in activation
-├── _backend.py                  # Multi-vendor hardware detection
-├── backends/                    # Vendor-specific backend modules
-│   ├── ascend.py                # Huawei Ascend NPU (torch_npu)
-│   └── cambricon.py             # Cambricon MLU (torch_mlu)
-├── cuda_shim/                   # Core CUDA interception layer
-│   ├── _registry.py             # torch.cuda attribute mapping
-│   ├── _monkey_patch.py         # Version-gated runtime patching
-│   ├── _patch_manager.py        # Thread-safe patch lifecycle
-│   ├── dtype_manager.py         # Automatic dtype substitution
-│   ├── quantization.py          # Quantization compatibility
-│   └── compile_helpers.py       # torch.compile + shape bucketing
-├── ecosystem/                   # Library-specific patches
-│   ├── flash_attn.py            # flash_attn shim
-│   ├── transformers_patch.py    # HuggingFace fixes
-│   ├── deepspeed_patch.py       # DeepSpeed fixes
-│   ├── vllm_patch.py            # vLLM fixes
-│   └── triton_bridge.py         # Triton integration
-├── doctor/                      # Diagnostics
-│   ├── version_check.py         # Compatibility matrix
-│   ├── error_codes.py           # Error code database
-│   └── env_setup.py             # Environment validation
-├── validation/                  # Empirical verification
-│   └── op_verifier.py           # Operator correctness harness
-└── kernel_helper/               # Ascend C scaffolding (experimental)
-```
+**We are actively seeking hardware partners.** If you have access to any
+non-NVIDIA accelerator and want to help validate, please open an issue.
 
 ## Development
 
@@ -223,57 +142,72 @@ src/cuda_morph/
 git clone https://github.com/JosephAhn23/cuda-morph.git
 cd cuda-morph
 pip install -e ".[dev]"
-python -m pytest tests/ -v                    # All tests (CPU)
-python -m pytest tests/ -v --run-hardware     # Include NPU tests
+pytest tests/ -v                      # All tests (CPU)
+pytest tests/ -v --run-hardware       # Include hardware tests
 ```
 
-## What this project does NOT do
+### Adding a new backend
 
-- **Does not replace vendor adapters** — torch_npu, torch_mlu handle C++ dispatch
-- **Does not translate CUDA kernels** — architecture is fundamentally different
-- **Does not add dispatch overhead** — PrivateUse1 dispatch is zero-cost
-- **Does not auto-patch on import** — activation is explicit
+```python
+# src/ascend_compat/backends/myvendor.py
+from ascend_compat.backends.registry import BackendInfo
 
-## Requirements
+class MyVendorBackend(BackendInfo):
+    name = "myvendor"
+    device_type = "mydev"
+    adapter_module = "torch_mydev"
+    collective_backend = "myccl"
+    visible_devices_env = "MYDEV_VISIBLE_DEVICES"
+    display_name = "MyVendor Accelerator"
 
-- Python 3.8+
-- PyTorch 2.0+
-- Vendor adapter for your hardware:
-  - Ascend: `torch_npu` + CANN toolkit
-  - Cambricon: `torch_mlu` + BANG toolkit
+    @staticmethod
+    def is_available() -> bool:
+        try:
+            import torch_mydev
+            import torch
+            return torch.mydev.is_available()
+        except Exception:
+            return False
+```
+
+Then register it in `backends/__init__.py`. That's it.
 
 ## License
 
 Apache 2.0
 
-## See Also
+## See also
 
-- [STRATEGY.md](STRATEGY.md) — Multi-backend vision and roadmap
+- [STRATEGY.md](STRATEGY.md) — Project vision and roadmap
 - [VALIDATION_STATUS.md](VALIDATION_STATUS.md) — What is and isn't proven
 - [MIGRATION.md](MIGRATION.md) — Upgrading from older versions
-- [TROUBLESHOOTING.md](TROUBLESHOOTING.md) — Common issues and fixes
 
 ---
 
 # cuda-morph (中文)
 
-**PyTorch CUDA → 国产AI芯片 零代码迁移工具**
+**一次导入，零代码修改，在任何非NVIDIA加速器上运行PyTorch。**
 
-写一次代码，运行在任何国产芯片上。无需修改代码。
+## 这是什么
 
-## 背景
+cuda-morph 是一个运行时适配层，拦截 `torch.cuda` 调用并路由到实际存在的加速器 — AMD ROCm、Intel XPU、华为昇腾、寒武纪，或任何未来的 PyTorch 后端。
 
-中国正在部署超过10万颗国产AI芯片。5300多家AI企业正在从NVIDIA CUDA迁移到国产硬件。每个AI框架、每个HuggingFace模型、每个DeepSpeed训练脚本都硬编码了 `torch.cuda`。
+**它解决的问题：** 全球 AI 软件生态被锁定在 NVIDIA CUDA 上。每个非 NVIDIA 硬件上运行现有代码都需要数周的手动移植。cuda-morph 将此降为零。
 
-**硬件可以工作。软件生态没有跟上。**
+## 定位
 
-cuda-morph 解决这个问题：**零代码修改，即时迁移。**
+**本项目不与 [FlagOS/FlagScale](https://github.com/FlagOpen/FlagScale) 竞争。** FlagOS 是国家支持的生产级基础设施，拥有658名贡献者和65个生态合作伙伴。它是优秀的。
 
-## 碎片化问题
+cuda-morph 占据不同的位置：FlagOS 专注于中国 AI 自主可控（深度优化、算子生成、编译器）。cuda-morph 专注于**全球打破 CUDA 垄断**（零代码迁移、多厂商统一接口）。
 
-每个国产芯片厂商提供自己的PyTorch适配器：华为用 `torch_npu`，寒武纪用 `torch_mlu`，壁仞用 `torch_br`。学会一个，不能直接用另一个。
+## 支持的后端
 
-cuda-morph 统一了接口：**一次导入，一个API，所有国产硬件。**
+| 后端 | 硬件 | 状态 |
+|------|------|------|
+| AMD ROCm | MI210, MI250X, MI300X | 检测桩 |
+| Intel XPU | Max 1550, Flex, Arc | 检测桩 |
+| 华为昇腾 | 910B, 310P | 架构完成，400+测试 |
+| 寒武纪 | MLU370, MLU590 | 检测桩 |
 
 ## 快速开始
 
@@ -281,27 +215,6 @@ cuda-morph 统一了接口：**一次导入，一个API，所有国产硬件。*
 import cuda_morph
 cuda_morph.activate()  # 自动检测硬件，补丁 torch.cuda
 
-# 以下代码无需修改
-device = torch.device("cuda")   # → 自动路由到检测到的后端
-model = model.cuda()             # → 自动路由
+# 以下代码无需修改，自动路由到检测到的后端
+model = model.cuda()
 ```
-
-或者直接运行现有脚本：
-
-```bash
-cuda-morph run train.py --epochs 10
-```
-
-## 支持的后端
-
-| 厂商 | 芯片 | 状态 |
-|------|------|------|
-| 华为 | 昇腾 910B | 架构完成，仿真验证 |
-| 寒武纪 | MLU370/590 | 后端桩，开发中 |
-| 壁仞 | BR100 | 规划中 |
-
-## 验证状态
-
-> cuda-morph 目前在CPU回退模式下通过仿真验证（407项测试）。
-> 参数映射基于厂商文档，尚未在真实硬件上验证。
-> 详见 [VALIDATION_STATUS.md](VALIDATION_STATUS.md)。

@@ -1,201 +1,174 @@
 # cuda-morph Strategy
 
-## The Problem We Solve
+## One sentence
 
-China is deploying domestic AI chips at national scale. The hardware works.
-The global software ecosystem (HuggingFace, DeepSpeed, vLLM, Triton) does not
-follow — it hard-codes NVIDIA CUDA. Every enterprise migrating to domestic
-hardware hits the same wall: weeks of manual porting per project.
+cuda-morph is a unified runtime shim that lets existing PyTorch/CUDA code
+run on any non-NVIDIA accelerator with zero code changes.
 
-**cuda-morph reduces this from weeks to zero.**
+## The problem
 
-## The Strategic Context
+The global AI software ecosystem is locked to NVIDIA CUDA. This is not
+a China-specific problem. It affects:
 
-### The market
+- **China:** 5,300+ AI enterprises migrating to domestic chips (Ascend,
+  Cambricon, Biren, MooreThreads) due to export controls
+- **AMD users:** flash-attn won't compile, libraries check
+  `torch.version.cuda`, RCCL differs from NCCL
+- **Intel users:** XPU device type is unknown to most libraries,
+  `device_map="auto"` ignores Intel GPUs
+- **Cloud providers:** Multi-vendor GPU pools need workload portability
+- **Researchers:** Want to run on whatever hardware is available
 
-- 5,300+ AI enterprises in China migrating from CUDA to domestic hardware
-- 100,000+ domestic AI chip clusters being deployed (Beijing AI Action Plan)
-- National policy explicitly targets open-source AI ecosystems and
-  heterogeneous computing breakthroughs (MIIT 14th Five-Year Plan)
+Every non-NVIDIA accelerator has its own PyTorch adapter. Each breaks the
+ecosystem in the same way. The fix is always the same: intercept `torch.cuda`
+calls and route to the real device.
 
-### The fragmentation crisis
+**Nobody builds this as a unified tool.** Each vendor builds their own
+partial solution. Each solution only covers their hardware.
 
-Each chip vendor ships their own PyTorch adapter:
+## What exists (and why it's not enough)
 
-| Vendor | Adapter | Collective | Runtime | Community |
-|--------|---------|------------|---------|-----------|
-| Huawei Ascend | `torch_npu` | HCCL | CANN | Largest |
-| Cambricon | `torch_mlu` | CNCL | BANG | Growing |
-| Biren | `torch_br` | — | BiRen RT | Early |
-| Enflame | `torch_gcu` | ECCL | TopsRider | Early |
-| MetaX | `torch_maca` | — | MACA | Early |
+| Project | What it does | What it doesn't do |
+|---------|-------------|-------------------|
+| **FlagOS/FlagScale** | Full-stack AI infra for 12+ Chinese chips. 658 contributors, 65 partners, production-deployed. | Not global. AMD/Intel are not first-class. Not "zero code change" — requires integration. |
+| **SCALE** | Binary-level CUDA→ROCm translation | AMD only. No Intel, no Chinese chips. Not framework-aware. |
+| **ZLUDA** | CUDA→ROCm/Level Zero binary shim | AMD + Intel only. No Chinese chips. Binary level, not Python. |
+| **AdaptiveCpp** | Multi-vendor via SYCL | Requires code rewrite. Not a drop-in shim. |
+| **torch_npu** | Ascend PrivateUse1 backend | Ascend only. Doesn't fix ecosystem (HF, DS, vLLM). |
+| **torch_mlu** | Cambricon PrivateUse1 backend | Cambricon only. Same ecosystem gap. |
+| **IPEX** | Intel XPU backend | Intel only. Same ecosystem gap. |
 
-A team that ports to Ascend must re-port for Cambricon. A developer who learns
-`torch_npu` cannot easily switch to `torch_mlu`. Each migration is bespoke.
+**The gap:** No unified, framework-aware, zero-code-change runtime shim
+that covers ALL non-NVIDIA accelerators.
 
-**This fragmentation is a national-scale inefficiency.**
-
-### Why nobody else builds this
-
-- **Huawei won't.** Building a unified layer that supports Cambricon means
-  validating a competitor's hardware. Their incentive is Ascend-only.
-- **Cambricon won't.** Same logic in reverse.
-- **Startups can't.** DeepSeek, Moonshot, Zhipu are focused on models, not
-  horizontal infrastructure.
-- **Academics haven't.** They focus on FLOPs and benchmarks, not software
-  engineering.
-
-**An independent, vendor-neutral project is the only entity that can build
-a unified migration layer across all domestic chips.**
-
-## Our Position
-
-cuda-morph is **the on-ramp for China's domestic AI migration.**
-
-We are not competing with torch_npu or torch_mlu. We are the bridge between
-them and the global open-source ecosystem they cannot individually own.
-
-| Framing | Before | After |
-|---------|--------|-------|
-| Identity | Compatibility hack | Strategic infrastructure |
-| Value prop | "Works around Huawei's gaps" | "Extends every vendor's reach into the global ecosystem" |
-| Hardware access | Cold email for charity | Partnership for mutual benefit |
-| Competition | torch_npu | Fragmentation itself |
-
-## Technical Architecture
-
-The architecture already supports multi-vendor backends:
+## cuda-morph's position
 
 ```
-cuda_morph/
-├── _backend.py              # Pluggable backend detection
-├── backends/
-│   ├── registry.py          # Backend registration protocol
-│   ├── ascend.py            # Huawei Ascend (torch_npu, CANN, HCCL)
-│   ├── cambricon.py         # Cambricon MLU (torch_mlu, BANG, CNCL)
-│   └── <future>.py          # Any PrivateUse1 backend
-├── cuda_shim/               # Vendor-agnostic CUDA interception
-│   ├── _monkey_patch.py     # Patches route to whichever backend is active
-│   └── _registry.py         # Maps torch.cuda attrs to backend equivalents
-└── ecosystem/               # Library patches (same for all backends)
+                        Scope
+                        ↑
+  FlagOS ●              |  Full stack (operators, compiler, parallelism)
+                        |
+                        |
+                        |
+                        |  Runtime shim (intercept + route)
+  cuda-morph ●──────────|──────────────────────────●
+                        |
+  SCALE/ZLUDA ●         |  Binary translation
+                        |
+                        └──────────────────────────→ Vendor coverage
+                    China-only              ALL non-NVIDIA
 ```
 
-### Adding a new backend
+cuda-morph is the only project targeting the (runtime shim) x (all vendors)
+quadrant. This is the position.
 
-A backend module implements a simple protocol:
+## Architecture
 
-```python
-class CambriconBackend:
-    name = "cambricon"
-    device_type = "mlu"
-    adapter_module = "torch_mlu"
-    collective_backend = "cncl"
-    visible_devices_env = "MLU_VISIBLE_DEVICES"
-
-    @staticmethod
-    def is_available() -> bool:
-        """Return True if Cambricon hardware is detected."""
-        ...
-
-    @staticmethod
-    def device_count() -> int:
-        """Return number of MLU devices."""
-        ...
+```
+backends/
+├── registry.py          # BackendInfo protocol
+├── ascend.py            # Huawei Ascend NPU (torch_npu)
+├── cambricon.py         # Cambricon MLU (torch_mlu)
+├── rocm.py              # AMD ROCm (HIP, PyTorch ROCm build)
+├── intel.py             # Intel XPU (IPEX, Level Zero)
+└── <future>.py          # Biren, MooreThreads, ARM, etc.
 ```
 
-The core shim (`_monkey_patch.py`) already uses the backend's `device_type`
-to translate `"cuda"` → `"npu"` or `"cuda"` → `"mlu"`. Ecosystem patches
-use the backend's `collective_backend` to select HCCL vs CNCL.
+Adding a new backend = one Python file (~80 lines). Detection logic,
+device type mapping, collective backend name, env var mapping. No C++.
+
+The core shim (`cuda_shim/`) is vendor-agnostic. It reads the active
+backend's `device_type` to know what to translate `"cuda"` to.
 
 ## Roadmap
 
-### Phase 1: Prove it works (Now → 3 months)
+### Phase 1: Validate ONE backend (now → 3 months)
 
-**Goal:** Validate on real Ascend hardware. One confirmed deployment.
+**Goal:** First end-to-end proof on real hardware.
 
-- [ ] Partner with one enterprise or research lab for 910B access
-- [ ] Run full example suite on real NPU; fix whatever breaks
-- [ ] Publish benchmark results (tokens/sec, memory, latency)
-- [ ] Change README: "Validated on Ascend 910B (CANN 8.0)"
+Priority: **AMD ROCm.** Reasons:
+- Hardware is accessible (cloud instances, developer grants)
+- Large user community (MI300X is being deployed at scale)
+- Highest value gap (flash-attn doesn't compile on ROCm)
+- Proves global positioning (not just a China project)
 
-**Success metric:** One external user runs cuda-morph on real Ascend and
-reports results.
+Actions:
+- [ ] Apply for AMD developer hardware grant
+- [ ] Run BERT + Llama inference through cuda-morph on ROCm
+- [ ] Fix flash-attn routing (use Triton flash-attn or CK on ROCm)
+- [ ] Publish benchmark: tokens/sec, memory, latency vs NVIDIA baseline
+- [ ] README: "Validated on AMD MI300X"
 
-### Phase 2: Multi-backend (3 → 6 months)
+Parallel track: If Ascend hardware becomes available first, validate that.
+The first validated backend — whichever it is — proves the architecture.
 
-**Goal:** Prove the unified migration claim with a second backend.
+### Phase 2: Validate SECOND backend (3 → 6 months)
 
-- [ ] Obtain Cambricon MLU access (academic program or MLU cloud)
-- [ ] Implement full Cambricon backend (torch_mlu detection, device mapping)
-- [ ] Adapt ecosystem patches for CNCL collective
-- [ ] Run same example suite on MLU; publish comparison
-- [ ] Publish: "First unified PyTorch migration across Ascend and Cambricon"
+**Goal:** Prove multi-vendor claim with two validated backends.
 
-**Success metric:** Same script runs on both Ascend and Cambricon with
-`cuda-morph run` and zero code changes.
+- [ ] Second backend (Ascend or Cambricon, whichever is accessible)
+- [ ] Same script runs on both backends with zero code changes
+- [ ] Publish: "One import, two vendors, zero rewrites"
 
-### Phase 3: Ecosystem adoption (6 → 12 months)
+### Phase 3: Community and adoption (6 → 12 months)
 
-**Goal:** Institutional recognition and adoption.
+- [ ] PyPI release: `pip install cuda-morph`
+- [ ] Contributor guide for adding new backends
+- [ ] Partner with one enterprise or research lab for production validation
+- [ ] Present at relevant conference (AMD DevDay, Huawei HDC, or PyTorch conf)
 
-- [ ] Submit to openEuler community as recommended migration tool
-- [ ] Present at Huawei Developer Conference or CNCC
-- [ ] Partner with one of China's AI unicorns for production validation
-- [ ] Contribute upstream patches to HuggingFace/DeepSpeed where possible
+### Phase 4 (future): CPU orchestration layer
 
-**Success metric:** cuda-morph referenced in vendor documentation or
-national AI infrastructure guidelines.
+Separate project. Not cuda-morph v2. See the bottom of this document.
 
-## Partnership Strategy
+## Why this is defensible
 
-### For hardware access
+1. **Vendor neutrality.** Huawei won't build AMD support. AMD won't build
+   Ascend support. Only an independent project can cover all backends.
 
-cuda-morph needs hardware to validate. Hardware vendors need ecosystem tools
-to drive adoption. This is **mutual benefit**, not charity.
+2. **Network effects.** Each new backend makes the project more valuable
+   to all users. The first multi-vendor runtime shim that works will
+   accumulate users faster than vendor-specific tools.
 
-**Pitch to vendors:**
+3. **Ecosystem patches are the moat.** The hard part is not device string
+   translation. It's knowing that HuggingFace `accelerate` selects NCCL
+   when `is_available()` returns True, and that DeepSpeed's `timer.py`
+   calls `torch.cuda.Event()`. These fixes apply to ALL non-NVIDIA backends.
+   Write once, benefit everyone.
 
-> "You are spending engineering resources helping customers migrate from CUDA.
-> cuda-morph automates this. I need hardware access to validate it works on
-> your chips. In return, you get an open-source migration tool that accelerates
-> your customer onboarding."
+## What this is NOT
 
-**Specific targets:**
+- **Not a competitor to FlagOS.** FlagOS is excellent. We link to it
+  in the README. Different scope, different audience.
+- **Not a competitor to vendor adapters.** We depend on torch_npu,
+  torch_mlu, IPEX, ROCm builds. We don't replace them.
+- **Not production-ready.** Zero hardware validation. The architecture
+  is correct and tested on CPU simulation. We are seeking partners.
 
-1. **Huawei Ascend Community** — ModelZoo contributor program, hardware credits
-2. **Cambricon MLU Cloud** — Academic/developer access program
-3. **National computing centers** — Beijing, Shanghai, Wuhan AI clusters
-4. **AI enterprises** — DeepSeek, Baichuan, Zhipu (they all have this problem)
-
-### For adoption
-
-The value proposition is simple: **cuda-morph saves migration time.**
-
-Quantified: A team of 50 engineers spending 2 weeks each on CUDA→NPU migration
-= 100 person-weeks = ~$300K in engineering cost. cuda-morph reduces this to
-hours.
-
-## What This Is Not
-
-- **Not a competitor to torch_npu or torch_mlu.** We depend on them.
-- **Not a Huawei product.** We are independent and vendor-neutral.
-- **Not a complete solution today.** Hardware validation is required.
-- **Not marketing.** Every claim here is either implemented in code or
-  explicitly marked as planned.
-
-## Current State (Honest)
+## Current state (honest)
 
 | Component | Status |
 |-----------|--------|
-| Ascend backend architecture | Complete (407 tests pass) |
-| Ascend hardware validation | Not done (no hardware access) |
-| Cambricon backend | Stub with detection logic |
-| Cambricon hardware validation | Not done |
-| Ecosystem patches (HF, DS, vLLM) | Implemented, version-guarded |
-| Ecosystem patch hardware validation | Not done |
-| Multi-backend switching | Architecture supports it; tested on CPU |
-| Production deployment | Zero users |
+| Backend registry (4 vendors) | Complete |
+| Ascend backend architecture | Complete (420+ tests) |
+| AMD ROCm backend | Stub (detection only) |
+| Intel XPU backend | Stub (detection only) |
+| Cambricon backend | Stub (detection only) |
+| Hardware validation (any backend) | **Not done** |
+| Production users | **Zero** |
 
-The gap between "specification" and "product" is hardware access and runtime
-debugging. The code is ready. The architecture is proven on CPU. We need a
-partner with chips.
+The gap between "specification" and "product" is access to one non-NVIDIA
+accelerator for two weeks of runtime debugging.
+
+## Future: CPU orchestration layer
+
+Alibaba's Jade system proved that CPU-as-commander architecture delivers
+22% p95 latency reduction and 33% lower power across 32,000 nodes. Their
+solution is closed-source and Alibaba-internal.
+
+No open-source alternative exists. This is a real gap (cited by 人民网).
+
+This is a separate project — too large for cuda-morph, requires systems
+engineering expertise, and should be community-owned from day one. The
+right time to start is after cuda-morph has at least one validated backend
+and a contributor community. Plant the flag with an RFC, not code.

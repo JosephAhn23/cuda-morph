@@ -93,7 +93,7 @@ from __future__ import annotations
 import os
 import warnings
 
-__version__ = "0.8.0"
+__version__ = "0.9.0"
 
 # Core infrastructure (always available — no side effects)
 from ascend_compat._backend import (
@@ -102,6 +102,8 @@ from ascend_compat._backend import (
     has_cuda,
     has_mlu,
     has_npu,
+    has_rocm,
+    has_xpu,
     preferred_backend,
 )
 from ascend_compat._logging import set_log_level
@@ -190,6 +192,8 @@ __all__ = [
     "preferred_backend",
     "has_npu",
     "has_mlu",
+    "has_rocm",
+    "has_xpu",
     "has_cuda",
     # Shim control
     "activate",

@@ -53,14 +53,18 @@ class Backend(enum.Enum):
 
     NPU = "npu"      # Huawei Ascend via torch_npu
     MLU = "mlu"      # Cambricon via torch_mlu
+    ROCM = "rocm"    # AMD via ROCm/HIP (presents as "cuda" device)
+    XPU = "xpu"      # Intel via IPEX/Level Zero
     CUDA = "cuda"    # NVIDIA via torch.cuda
     CPU = "cpu"      # Always available
 
 
-# Map backend enum values to their device type strings
+# Map backend device type strings to enum values
 _BACKEND_DEVICE_TYPES: Dict[str, Backend] = {
     "npu": Backend.NPU,
     "mlu": Backend.MLU,
+    "rocm": Backend.ROCM,
+    "xpu": Backend.XPU,
     "cuda": Backend.CUDA,
     "cpu": Backend.CPU,
 }
@@ -240,6 +244,16 @@ def has_mlu() -> bool:
     return Backend.MLU in detect_backends()
 
 
+def has_rocm() -> bool:
+    """Return True if AMD ROCm GPU is detected."""
+    return Backend.ROCM in detect_backends()
+
+
+def has_xpu() -> bool:
+    """Return True if at least one Intel XPU is usable."""
+    return Backend.XPU in detect_backends()
+
+
 def has_cuda() -> bool:
     """Return True if at least one NVIDIA GPU is usable."""
     return Backend.CUDA in detect_backends()
@@ -293,8 +307,16 @@ def translate_device_string(device: str) -> str:
     """
     backend = preferred_backend()
 
-    if backend in (Backend.NPU, Backend.MLU) and device.startswith("cuda"):
-        target_type = backend.value  # "npu" or "mlu"
+    # Backends that need "cuda" → their device type translation
+    _TRANSLATE_BACKENDS = {
+        Backend.NPU: "npu",
+        Backend.MLU: "mlu",
+        Backend.XPU: "xpu",
+        # ROCm does NOT need translation — it presents as "cuda" via HIP
+    }
+
+    if backend in _TRANSLATE_BACKENDS and device.startswith("cuda"):
+        target_type = _TRANSLATE_BACKENDS[backend]
         translated = device.replace("cuda", target_type, 1)
         logger.debug("Device string translated: %r → %r", device, translated)
         return translated

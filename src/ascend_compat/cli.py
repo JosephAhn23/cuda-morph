@@ -502,6 +502,8 @@ def show_info() -> str:
         lines.append(f"Preferred backend:   {ascend_compat.preferred_backend().value}")
         lines.append(f"Has Ascend NPU:      {ascend_compat.has_npu()}")
         lines.append(f"Has Cambricon MLU:   {ascend_compat.has_mlu()}")
+        lines.append(f"Has AMD ROCm:        {ascend_compat.has_rocm()}")
+        lines.append(f"Has Intel XPU:       {ascend_compat.has_xpu()}")
         lines.append(f"Has NVIDIA CUDA:     {ascend_compat.has_cuda()}")
         backends = ascend_compat.detect_backends()
         lines.append(f"All backends:        {[b.value for b in backends]}")

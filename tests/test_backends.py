@@ -7,6 +7,8 @@ import pytest
 from ascend_compat.backends import BACKEND_REGISTRY, BackendInfo
 from ascend_compat.backends.ascend import AscendBackend
 from ascend_compat.backends.cambricon import CambriconBackend
+from ascend_compat.backends.rocm import ROCmBackend
+from ascend_compat.backends.intel import IntelBackend
 from ascend_compat._backend import Backend
 
 
@@ -22,6 +24,15 @@ class TestBackendRegistry:
     def test_registry_has_cambricon(self):
         assert "cambricon" in BACKEND_REGISTRY
 
+    def test_registry_has_rocm(self):
+        assert "rocm" in BACKEND_REGISTRY
+
+    def test_registry_has_intel(self):
+        assert "intel" in BACKEND_REGISTRY
+
+    def test_registry_has_four_backends(self):
+        assert len(BACKEND_REGISTRY) == 4
+
     def test_all_backends_subclass_info(self):
         for name, cls in BACKEND_REGISTRY.items():
             assert issubclass(cls, BackendInfo), f"{name} must subclass BackendInfo"
@@ -33,6 +44,24 @@ class TestBackendRegistry:
             for attr in required:
                 val = getattr(cls, attr)
                 assert val, f"{name}.{attr} must not be empty"
+
+    def test_all_backends_have_display_name(self):
+        for name, cls in BACKEND_REGISTRY.items():
+            assert cls.display_name, f"{name} must have a display_name"
+
+    def test_all_backends_detection_safe(self):
+        """is_available() must not crash, even without hardware."""
+        for name, cls in BACKEND_REGISTRY.items():
+            result = cls.is_available()
+            assert isinstance(result, bool), f"{name}.is_available() must return bool"
+
+    def test_all_backends_summary_safe(self):
+        """summary() must return a dict without crashing."""
+        for name, cls in BACKEND_REGISTRY.items():
+            summary = cls.summary()
+            assert isinstance(summary, dict)
+            assert "name" in summary
+            assert "available" in summary
 
 
 class TestAscendBackend:
@@ -125,29 +154,106 @@ class TestCambriconBackend:
         assert summary["available"] is False
 
 
-class TestBackendEnum:
-    """Test Backend enum includes MLU."""
+class TestROCmBackend:
+    """Test AMD ROCm backend configuration."""
 
-    def test_mlu_exists(self):
-        assert Backend.MLU.value == "mlu"
+    def test_name(self):
+        assert ROCmBackend.name == "rocm"
+
+    def test_device_type(self):
+        assert ROCmBackend.device_type == "cuda"  # ROCm presents as CUDA
+
+    def test_collective(self):
+        assert ROCmBackend.collective_backend == "rccl"
+
+    def test_visible_devices(self):
+        assert ROCmBackend.visible_devices_env == "HIP_VISIBLE_DEVICES"
+
+    def test_display_name(self):
+        assert "AMD" in ROCmBackend.display_name
+
+    def test_is_available_returns_bool(self):
+        result = ROCmBackend.is_available()
+        assert isinstance(result, bool)
+
+    def test_summary(self):
+        summary = ROCmBackend.summary()
+        assert summary["name"] == "rocm"
+        assert summary["device_type"] == "cuda"
+
+
+class TestIntelBackend:
+    """Test Intel XPU backend configuration."""
+
+    def test_name(self):
+        assert IntelBackend.name == "intel"
+
+    def test_device_type(self):
+        assert IntelBackend.device_type == "xpu"
+
+    def test_adapter_module(self):
+        assert IntelBackend.adapter_module == "intel_extension_for_pytorch"
+
+    def test_collective(self):
+        assert IntelBackend.collective_backend == "ccl"
+
+    def test_visible_devices(self):
+        assert IntelBackend.visible_devices_env == "ZE_AFFINITY_MASK"
+
+    def test_display_name(self):
+        assert "Intel" in IntelBackend.display_name
+
+    def test_is_available_returns_false_without_hardware(self):
+        assert IntelBackend.is_available() is False
+
+    def test_device_count_zero_without_hardware(self):
+        assert IntelBackend.device_count() == 0
+
+    def test_adapter_version_none_without_install(self):
+        assert IntelBackend.get_adapter_version() is None
+
+    def test_summary(self):
+        summary = IntelBackend.summary()
+        assert summary["name"] == "intel"
+        assert summary["device_type"] == "xpu"
+        assert summary["available"] is False
+
+
+class TestBackendEnum:
+    """Test Backend enum includes all backends."""
 
     def test_all_values(self):
         values = {b.value for b in Backend}
         assert "npu" in values
         assert "mlu" in values
+        assert "rocm" in values
+        assert "xpu" in values
         assert "cuda" in values
         assert "cpu" in values
 
+    def test_six_members(self):
+        assert len(Backend) == 6
 
-class TestHasMlu:
-    """Test the has_mlu() predicate."""
+
+class TestGlobalPredicates:
+    """Test the global has_*() predicates."""
 
     def test_has_mlu_returns_bool(self):
         import ascend_compat
-        result = ascend_compat.has_mlu()
-        assert isinstance(result, bool)
+        assert isinstance(ascend_compat.has_mlu(), bool)
 
     def test_has_mlu_false_without_hardware(self):
         import ascend_compat
-        # No MLU hardware in CI
         assert ascend_compat.has_mlu() is False
+
+    def test_has_rocm_returns_bool(self):
+        import ascend_compat
+        assert isinstance(ascend_compat.has_rocm(), bool)
+
+    def test_has_xpu_returns_bool(self):
+        import ascend_compat
+        assert isinstance(ascend_compat.has_xpu(), bool)
+
+    def test_has_xpu_false_without_hardware(self):
+        import ascend_compat
+        assert ascend_compat.has_xpu() is False

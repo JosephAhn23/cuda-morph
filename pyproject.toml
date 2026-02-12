@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ascend-compat"
-version = "0.8.0"
+version = "0.9.0"
 description = "CUDA-to-Ascend ecosystem compatibility bridge — fixes the last mile between torch_npu and your existing CUDA code"
 readme = "README.md"
 license = {text = "Apache-2.0"}

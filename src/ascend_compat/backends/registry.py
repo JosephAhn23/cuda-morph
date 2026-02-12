@@ -15,7 +15,7 @@ from typing import Any, Dict, List, Optional
 
 
 class BackendInfo:
-    """Protocol for a domestic AI chip backend.
+    """Protocol for a non-NVIDIA accelerator backend.
 
     Subclass this and fill in the class attributes.  The detection
     methods (``is_available``, ``device_count``) are called at runtime

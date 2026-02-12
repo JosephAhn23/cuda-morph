@@ -19,6 +19,9 @@ class TestBackendEnum:
 
     def test_values(self) -> None:
         assert Backend.NPU.value == "npu"
+        assert Backend.MLU.value == "mlu"
+        assert Backend.ROCM.value == "rocm"
+        assert Backend.XPU.value == "xpu"
         assert Backend.CUDA.value == "cuda"
         assert Backend.CPU.value == "cpu"
 
