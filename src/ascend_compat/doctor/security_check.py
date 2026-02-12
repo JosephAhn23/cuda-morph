@@ -51,13 +51,25 @@ class IntegrityResult:
     details: Dict[str, str] = field(default_factory=dict)
 
 
-# Known-good hashes: {version: sha256_of_init_file}
-# These should be populated from official releases.
-# Using empty dict for now — community should fill these in.
-_KNOWN_HASHES: Dict[str, str] = {
-    # "2.5.1": "abc123...",
-    # "2.4.0": "def456...",
-}
+# Known-good hashes: {version: sha256_of___init__.py}
+#
+# STATUS: NO HASHES VERIFIED YET.
+#
+# This dict is intentionally empty.  Hash verification only works when
+# the community populates it with hashes from official Huawei releases.
+# Without verified hashes, the check returns "unknown" (not "ok").
+#
+# To contribute a hash:
+#   1. Install an official torch_npu release from Huawei's repo
+#   2. Run: python -c "import hashlib, torch_npu; print(hashlib.sha256(open(torch_npu.__file__,'rb').read()).hexdigest())"
+#   3. Submit a PR adding the version → hash mapping below
+#
+# We do NOT ship pre-populated hashes because:
+#   - torch_npu builds differ across platforms (x86, aarch64)
+#   - Different CANN versions produce different binaries
+#   - A wrong hash would cause false positives, eroding trust
+#
+_KNOWN_HASHES: Dict[str, str] = {}
 
 # Expected CANN shared libraries
 _EXPECTED_CANN_LIBS = [

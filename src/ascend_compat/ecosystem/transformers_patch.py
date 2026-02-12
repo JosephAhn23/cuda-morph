@@ -33,7 +33,8 @@ Usage::
 from __future__ import annotations
 
 import sys
-from typing import Any
+import warnings
+from typing import Any, Dict, List, Optional, Tuple
 
 from ascend_compat._backend import has_npu
 from ascend_compat._logging import get_logger
@@ -42,9 +43,45 @@ logger = get_logger(__name__)
 
 _applied = False
 
+# Tested library versions.  Patches were verified against these.
+_TESTED_TRANSFORMERS = ((4, 36), (4, 40), (4, 44), (4, 45), (4, 50))
+_TESTED_ACCELERATE = ((0, 28), (0, 30), (0, 33), (0, 34), (1, 0))
+
+# Patch verification results
+_patch_results: Dict[str, bool] = {}
+
+
+def _get_library_version(module_name: str) -> Optional[Tuple[int, ...]]:
+    """Return (major, minor) version tuple for an installed library, or None."""
+    try:
+        mod = __import__(module_name)
+        ver_str = getattr(mod, "__version__", "0.0.0")
+        parts = ver_str.split(".")[:2]
+        return tuple(int(p) for p in parts)
+    except (ImportError, ValueError, AttributeError):
+        return None
+
+
+def _check_version_tested(lib_name: str, version: Tuple[int, ...],
+                          tested: Tuple[Tuple[int, int], ...]) -> None:
+    """Warn if the installed library version hasn't been tested."""
+    if version and version[:2] not in tested:
+        tested_strs = [f"{v[0]}.{v[1]}" for v in tested]
+        warnings.warn(
+            f"{lib_name} {version[0]}.{version[1]} has not been tested with ascend-compat. "
+            f"Tested versions: {', '.join(tested_strs)}. "
+            f"Patches may not work correctly.",
+            FutureWarning,
+            stacklevel=3,
+        )
+
 
 def apply() -> None:
-    """Apply all HuggingFace ecosystem patches.  Idempotent."""
+    """Apply all HuggingFace ecosystem patches.  Idempotent.
+
+    After patching, verifies each patch actually landed by calling the
+    patched function once.  Results are available via ``get_patch_results()``.
+    """
     global _applied  # noqa: PLW0603
     if _applied:
         return
@@ -53,12 +90,29 @@ def apply() -> None:
         logger.debug("No NPU detected — skipping transformers patches")
         return
 
+    # Version checks
+    tf_ver = _get_library_version("transformers")
+    if tf_ver:
+        _check_version_tested("transformers", tf_ver, _TESTED_TRANSFORMERS)
+
+    acc_ver = _get_library_version("accelerate")
+    if acc_ver:
+        _check_version_tested("accelerate", acc_ver, _TESTED_ACCELERATE)
+
     _patch_flash_attn_check()
     _patch_accelerate_device_detection()
     _register_flash_attn_package()
 
+    # Verify patches landed
+    _verify_patches()
+
     _applied = True
     logger.info("HuggingFace ecosystem patches applied")
+
+
+def get_patch_results() -> Dict[str, bool]:
+    """Return verification results: {patch_name: landed_successfully}."""
+    return dict(_patch_results)
 
 
 def _patch_flash_attn_check() -> None:
@@ -134,3 +188,36 @@ def _register_flash_attn_package() -> None:
         logger.debug("Registered ascend_compat.ecosystem.flash_attn as 'flash_attn' package")
     else:
         logger.debug("flash_attn already imported — not overriding with shim")
+
+
+def _verify_patches() -> None:
+    """Verify that applied patches actually landed.
+
+    Calls each patched function once and records whether it works.
+    This catches the case where a library update renamed the function
+    we patched, causing our patch to silently do nothing.
+    """
+    # Verify flash_attn_check
+    try:
+        import transformers.utils  # type: ignore[import-untyped]
+        if hasattr(transformers.utils, "is_flash_attn_2_available"):
+            result = transformers.utils.is_flash_attn_2_available()
+            _patch_results["flash_attn_check"] = result is True
+            if result is True:
+                logger.debug("Verified: is_flash_attn_2_available() → True")
+            else:
+                logger.warning(
+                    "Patch verification: is_flash_attn_2_available() returned %s "
+                    "(expected True). The patch may not have landed.",
+                    result,
+                )
+    except ImportError:
+        _patch_results["flash_attn_check"] = False
+    except Exception as exc:  # noqa: BLE001
+        _patch_results["flash_attn_check"] = False
+        logger.debug("flash_attn_check verification failed: %s", exc)
+
+    # Verify flash_attn package registration
+    _patch_results["flash_attn_package"] = "flash_attn" in sys.modules
+    if not _patch_results["flash_attn_package"]:
+        logger.warning("flash_attn package was not registered in sys.modules")

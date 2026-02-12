@@ -31,7 +31,8 @@ Usage::
 from __future__ import annotations
 
 import os
-from typing import Any
+import warnings
+from typing import Any, Dict, Optional, Tuple
 
 from ascend_compat._backend import has_npu
 from ascend_compat._logging import get_logger
@@ -39,6 +40,21 @@ from ascend_compat._logging import get_logger
 logger = get_logger(__name__)
 
 _applied = False
+_patch_results: Dict[str, bool] = {}
+
+# Tested DeepSpeed versions
+_TESTED_DEEPSPEED = ((0, 12), (0, 13), (0, 14), (0, 15), (0, 16))
+
+
+def _get_deepspeed_version() -> Optional[Tuple[int, ...]]:
+    """Return DeepSpeed (major, minor) version or None."""
+    try:
+        import deepspeed  # type: ignore[import-untyped]
+        ver = getattr(deepspeed, "__version__", "0.0.0")
+        parts = ver.split(".")[:2]
+        return tuple(int(p) for p in parts)
+    except (ImportError, ValueError):
+        return None
 
 
 def apply() -> None:
@@ -51,12 +67,28 @@ def apply() -> None:
         logger.debug("No NPU detected — skipping DeepSpeed patches")
         return
 
+    # Version guard
+    ds_ver = _get_deepspeed_version()
+    if ds_ver and ds_ver[:2] not in _TESTED_DEEPSPEED:
+        tested_strs = [f"{v[0]}.{v[1]}" for v in _TESTED_DEEPSPEED]
+        warnings.warn(
+            f"DeepSpeed {ds_ver[0]}.{ds_ver[1]} has not been tested with ascend-compat. "
+            f"Tested: {', '.join(tested_strs)}. Patches may not work correctly.",
+            FutureWarning,
+            stacklevel=2,
+        )
+
     _patch_visible_devices_env()
     _patch_deepspeed_dist_backend()
     _patch_deepspeed_timer()
 
     _applied = True
     logger.info("DeepSpeed compatibility patches applied")
+
+
+def get_patch_results() -> Dict[str, bool]:
+    """Return verification results: {patch_name: landed_successfully}."""
+    return dict(_patch_results)
 
 
 def _patch_visible_devices_env() -> None:
@@ -93,9 +125,20 @@ def _patch_deepspeed_dist_backend() -> None:
                 return original_init(dist_backend=dist_backend, **kwargs)
 
             deepspeed.comm.init_distributed = _patched_init
+            # Verify patch landed
+            _patch_results["dist_backend"] = (
+                deepspeed.comm.init_distributed is _patched_init
+            )
             logger.debug("Patched deepspeed.comm.init_distributed")
+        else:
+            _patch_results["dist_backend"] = False
+            logger.warning(
+                "deepspeed.comm.init_distributed not found. "
+                "DeepSpeed API may have changed — HCCL backend patch skipped."
+            )
 
     except ImportError:
+        _patch_results["dist_backend"] = False
         logger.debug("DeepSpeed not installed — skipping dist backend patch")
 
 

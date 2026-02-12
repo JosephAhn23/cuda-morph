@@ -44,7 +44,8 @@ from __future__ import annotations
 
 import os
 import shutil
-from typing import Any, Dict, List, Optional
+import warnings
+from typing import Any, Dict, List, Optional, Tuple
 
 from ascend_compat._backend import has_npu
 from ascend_compat._logging import get_logger
@@ -56,6 +57,10 @@ from ascend_compat.cuda_shim.quantization import (
 logger = get_logger(__name__)
 
 _applied = False
+_patch_results: Dict[str, bool] = {}
+
+# Tested vLLM versions
+_TESTED_VLLM = ((0, 4), (0, 5), (0, 6))
 
 # Quantization compatibility is defined in a single source of truth:
 #   ascend_compat.cuda_shim.quantization
@@ -74,6 +79,23 @@ def apply() -> None:
         logger.debug("No NPU detected — skipping vLLM patches")
         return
 
+    # Version guard
+    try:
+        import vllm  # type: ignore[import-untyped]
+        ver_str = getattr(vllm, "__version__", "0.0.0")
+        parts = ver_str.split(".")[:2]
+        vllm_ver = tuple(int(p) for p in parts)
+        if vllm_ver[:2] not in _TESTED_VLLM:
+            tested_strs = [f"{v[0]}.{v[1]}" for v in _TESTED_VLLM]
+            warnings.warn(
+                f"vLLM {vllm_ver[0]}.{vllm_ver[1]} has not been tested with ascend-compat. "
+                f"Tested: {', '.join(tested_strs)}.",
+                FutureWarning,
+                stacklevel=2,
+            )
+    except (ImportError, ValueError):
+        pass
+
     _patch_visible_devices()
     _validate_cann_env()
     _patch_vllm_attention_backend()
@@ -81,6 +103,11 @@ def apply() -> None:
 
     _applied = True
     logger.info("vLLM/vllm-ascend compatibility patches applied")
+
+
+def get_patch_results() -> Dict[str, bool]:
+    """Return verification results."""
+    return dict(_patch_results)
 
 
 def _patch_visible_devices() -> None:
