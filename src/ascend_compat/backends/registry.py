@@ -4,22 +4,32 @@ Every vendor backend implements this interface.  The core shim reads
 these attributes to translate ``torch.cuda`` calls to the right API
 without knowing anything about the specific vendor.
 
-This is intentionally a simple class protocol (not an ABC) so that
-backend modules can be defined with zero dependencies — they should
-work even if the vendor's adapter library is not installed.
+Uses ``__init_subclass__`` to enforce required fields at class creation
+time, and ABC abstract methods for runtime detection methods that every
+backend *must* implement.
 """
 
 from __future__ import annotations
 
+from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Optional
 
 
-class BackendInfo:
-    """Protocol for a non-NVIDIA accelerator backend.
+class BackendInfo(ABC):
+    """Abstract base class for a non-NVIDIA accelerator backend.
 
     Subclass this and fill in the class attributes.  The detection
     methods (``is_available``, ``device_count``) are called at runtime
     to probe hardware.  Everything else is static configuration.
+
+    Required fields (``name``, ``device_type``, ``adapter_module``) are
+    enforced at class creation time via ``__init_subclass__``.  Omitting
+    any of them raises ``TypeError`` immediately, preventing silent
+    misconfiguration.
+
+    Runtime detection methods (``is_available``, ``device_count``,
+    ``get_device_name``) are abstract — forgetting to implement them
+    raises ``TypeError`` at instantiation time.
 
     Example::
 
@@ -41,6 +51,7 @@ class BackendInfo:
     """
 
     # -- Static configuration (subclass MUST override) -----------------------
+    _REQUIRED_FIELDS = ("name", "device_type", "adapter_module")
 
     #: Short identifier, e.g. ``"ascend"``, ``"cambricon"``
     name: str = ""
@@ -63,9 +74,23 @@ class BackendInfo:
     #: Link to vendor documentation or adapter repo
     docs_url: str = ""
 
-    # -- Runtime detection (subclass SHOULD override) ------------------------
+    def __init_subclass__(cls, **kwargs: Any) -> None:
+        """Validate that required fields are set on every subclass."""
+        super().__init_subclass__(**kwargs)
+        missing = [
+            f for f in cls._REQUIRED_FIELDS
+            if not getattr(cls, f, "")
+        ]
+        if missing:
+            raise TypeError(
+                f"Backend '{cls.__name__}' must define: {', '.join(missing)}. "
+                f"See BackendInfo docstring for the required protocol."
+            )
+
+    # -- Runtime detection (subclass MUST override) --------------------------
 
     @staticmethod
+    @abstractmethod
     def is_available() -> bool:
         """Return True if this backend's hardware is detected and usable.
 
@@ -75,14 +100,16 @@ class BackendInfo:
         return False
 
     @staticmethod
+    @abstractmethod
     def device_count() -> int:
         """Return the number of available devices (0 if unavailable)."""
-        return 0
+        ...
 
     @staticmethod
+    @abstractmethod
     def get_device_name(index: int = 0) -> str:
         """Return the device model name at the given index."""
-        return "unknown"
+        ...
 
     @classmethod
     def get_adapter_version(cls) -> Optional[str]:

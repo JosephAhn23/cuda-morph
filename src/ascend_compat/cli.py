@@ -403,16 +403,13 @@ def _assess_difficulty(report: CheckReport) -> str:
 
 
 def port_file(file_path: str, dry_run: bool = False) -> str:
-    """Auto-rewrite simple CUDA calls to ascend-compat equivalents.
+    """Add ascend-compat shim activation to a CUDA-dependent Python file.
 
-    This handles the "easy" migrations:
-    - Adds ``import ascend_compat`` at the top of the file
-    - Replaces ``torch.cuda.is_available()`` with
-      ``ascend_compat.device.is_available()`` (and similar)
-    - Replaces ``"cuda"`` device strings with
-      ``ascend_compat.device.get_device_string()``
-    - Replaces ``.cuda()`` calls with
-      ``ascend_compat.device.to_device(...)``
+    The shim approach: rather than rewriting individual ``torch.cuda.*``
+    calls (which would require AST-level rewriting to be safe), we add
+    ``import ascend_compat; ascend_compat.activate()`` after the torch
+    imports.  The shim then transparently redirects all ``torch.cuda``
+    calls at runtime.
 
     Args:
         file_path: Path to the Python file to port.
@@ -431,50 +428,41 @@ def port_file(file_path: str, dry_run: bool = False) -> str:
         print(f"  Backup saved to: {backup_path}")
 
     modified = source
+    changes_made = False
 
-    # 1. Add import ascend_compat after torch imports
-    if "import ascend_compat" not in modified:
+    # Add import ascend_compat + activate() after torch imports
+    if "ascend_compat.activate()" not in modified:
+        shim_lines = (
+            "\nimport ascend_compat  # CUDA→Ascend compatibility shim"
+            "\nascend_compat.activate()  # Redirect torch.cuda → torch.npu"
+        )
+
         # Find the last torch import and add after it
         import_pattern = re.compile(r"^(import torch.*|from torch.* import.*)$", re.MULTILINE)
         matches = list(import_pattern.finditer(modified))
         if matches:
             last_match = matches[-1]
             insert_pos = last_match.end()
-            modified = (
-                modified[:insert_pos]
-                + "\nimport ascend_compat  # CUDA→Ascend compatibility shim"
-                + modified[insert_pos:]
-            )
+            modified = modified[:insert_pos] + shim_lines + modified[insert_pos:]
         else:
             # No torch imports found — add at the top
-            modified = (
-                "import ascend_compat  # CUDA→Ascend compatibility shim\n" + modified
-            )
+            modified = shim_lines.lstrip("\n") + "\n" + modified
 
-    # 2. Simple string replacements (conservative — only exact patterns)
-    replacements = [
-        # Device management
-        ("torch.cuda.is_available()", "ascend_compat.device.is_available()"),
-        ("torch.cuda.device_count()", "ascend_compat.device.device_count()"),
-        ("torch.cuda.current_device()", "ascend_compat.device.current_device()"),
-        ("torch.cuda.empty_cache()", "ascend_compat.memory.empty_cache()"),
-        ("torch.cuda.synchronize()", "ascend_compat.streams.synchronize()"),
-        # AMP
-        ("torch.cuda.amp.autocast", "ascend_compat.ops.autocast"),
-        ("torch.cuda.amp.GradScaler", "ascend_compat.ops.GradScaler"),
-        # Seeds
-        ("torch.cuda.manual_seed(", "ascend_compat.ops.manual_seed("),
-        ("torch.cuda.manual_seed_all(", "ascend_compat.ops.manual_seed_all("),
-    ]
+        changes_made = True
+        print("  Added: import ascend_compat + ascend_compat.activate()")
+    elif "import ascend_compat" not in modified:
+        # Has activate() but no import (unlikely but handle it)
+        modified = "import ascend_compat\n" + modified
+        changes_made = True
+        print("  Added: import ascend_compat")
+    else:
+        print("  ascend_compat already activated — no changes needed")
 
-    for old, new in replacements:
-        if old in modified:
-            modified = modified.replace(old, new)
-            print(f"  Replaced: {old} → {new}")
-
-    if not dry_run:
+    if not dry_run and changes_made:
         path.write_text(modified, encoding="utf-8")
         print(f"  Ported file written to: {path}")
+    elif not dry_run:
+        print("  No changes written")
 
     return modified
 

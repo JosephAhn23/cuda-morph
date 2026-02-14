@@ -16,7 +16,11 @@ from pathlib import Path
 
 import pytest
 
+from click.testing import CliRunner
+
 from ascend_compat.cli import CheckReport, check_file, main, port_file, show_info
+
+_runner = CliRunner()
 
 
 # ---------------------------------------------------------------------------
@@ -275,7 +279,8 @@ x = torch.randn(3)
         finally:
             os.unlink(path)
 
-    def test_replaces_is_available(self) -> None:
+    def test_adds_activate(self) -> None:
+        """port_file now adds shim activation instead of rewriting individual calls."""
         code = """import torch
 if torch.cuda.is_available():
     pass
@@ -283,30 +288,39 @@ if torch.cuda.is_available():
         path = _write_temp_py(code)
         try:
             result = port_file(path, dry_run=True)
-            assert "ascend_compat.device.is_available()" in result
-            assert "torch.cuda.is_available()" not in result
+            assert "import ascend_compat" in result
+            assert "ascend_compat.activate()" in result
+            # Original calls are preserved (shim handles them at runtime)
+            assert "torch.cuda.is_available()" in result
         finally:
             os.unlink(path)
 
-    def test_replaces_empty_cache(self) -> None:
+    def test_preserves_cuda_calls(self) -> None:
+        """Verify that port_file does NOT rewrite individual torch.cuda calls."""
         code = """import torch
 torch.cuda.empty_cache()
 """
         path = _write_temp_py(code)
         try:
             result = port_file(path, dry_run=True)
-            assert "ascend_compat.memory.empty_cache()" in result
+            assert "ascend_compat.activate()" in result
+            # Call is preserved — the shim redirects it at runtime
+            assert "torch.cuda.empty_cache()" in result
         finally:
             os.unlink(path)
 
-    def test_replaces_manual_seed(self) -> None:
+    def test_idempotent(self) -> None:
+        """Porting a file that already has activate() is a no-op."""
         code = """import torch
+import ascend_compat
+ascend_compat.activate()
 torch.cuda.manual_seed(42)
 """
         path = _write_temp_py(code)
         try:
             result = port_file(path, dry_run=True)
-            assert "ascend_compat.ops.manual_seed(42)" in result
+            # Should not double-add
+            assert result.count("ascend_compat.activate()") == 1
         finally:
             os.unlink(path)
 
@@ -358,75 +372,71 @@ class TestShowInfo:
 
 
 class TestCLIMain:
-    """Test the CLI entry point."""
+    """Test the CLI entry point (Click-based)."""
 
-    def test_no_args_shows_help(self, capsys: pytest.CaptureFixture) -> None:
-        result = main([])
-        assert result == 0
+    def test_no_args_shows_help(self) -> None:
+        result = _runner.invoke(main, [])
+        # Click groups return exit_code 0 for --help but 2 for no-args
+        assert result.exit_code in (0, 2)
+        assert "cuda-morph" in result.output
 
-    def test_info_command(self, capsys: pytest.CaptureFixture) -> None:
-        result = main(["info"])
-        assert result == 0
-        captured = capsys.readouterr()
-        assert "PyTorch" in captured.out
+    def test_info_command(self) -> None:
+        result = _runner.invoke(main, ["info"])
+        assert result.exit_code == 0
+        assert "PyTorch" in result.output
 
-    def test_check_command(self, capsys: pytest.CaptureFixture) -> None:
+    def test_check_command(self) -> None:
         code = """import torch
 torch.cuda.is_available()
 """
         path = _write_temp_py(code)
         try:
-            result = main(["check", path])
-            assert result == 0
-            captured = capsys.readouterr()
-            assert "ascend-compat" in captured.out
+            result = _runner.invoke(main, ["check", path])
+            assert result.exit_code == 0
+            assert "ascend-compat" in result.output
         finally:
             os.unlink(path)
 
-    def test_check_json_output(self, capsys: pytest.CaptureFixture) -> None:
+    def test_check_json_output(self) -> None:
         code = """import torch
 torch.cuda.is_available()
 """
         path = _write_temp_py(code)
         try:
-            result = main(["check", path, "--json"])
-            assert result == 0
-            captured = capsys.readouterr()
-            data = json.loads(captured.out)
+            result = _runner.invoke(main, ["check", path, "--json"])
+            assert result.exit_code == 0
+            data = json.loads(result.output)
             assert "dependencies" in data
             assert "migration_difficulty" in data
         finally:
             os.unlink(path)
 
     def test_check_nonexistent_file(self) -> None:
-        result = main(["check", "/nonexistent/file.py"])
-        assert result == 1
+        result = _runner.invoke(main, ["check", "/nonexistent/file.py"])
+        assert result.exit_code != 0
 
-    def test_port_dry_run(self, capsys: pytest.CaptureFixture) -> None:
+    def test_port_dry_run(self) -> None:
         code = """import torch
 torch.cuda.is_available()
 """
         path = _write_temp_py(code)
         try:
-            result = main(["port", path, "--dry-run"])
-            assert result == 0
+            result = _runner.invoke(main, ["port", path, "--dry-run"])
+            assert result.exit_code == 0
         finally:
             os.unlink(path)
 
-    def test_doctor_command(self, capsys: pytest.CaptureFixture) -> None:
-        result = main(["doctor"])
-        assert result == 0
-        captured = capsys.readouterr()
-        assert "ascend-compat doctor" in captured.out
+    def test_doctor_command(self) -> None:
+        result = _runner.invoke(main, ["doctor"])
+        assert result.exit_code == 0
+        assert "ascend-compat doctor" in result.output
 
-    def test_error_command_known_code(self, capsys: pytest.CaptureFixture) -> None:
-        result = main(["error", "507035"])
-        assert result == 0
-        captured = capsys.readouterr()
-        assert "507035" in captured.out
+    def test_error_command_known_code(self) -> None:
+        result = _runner.invoke(main, ["error", "507035"])
+        assert result.exit_code == 0
+        assert "507035" in result.output
 
-    def test_error_command_unknown_code(self, capsys: pytest.CaptureFixture) -> None:
-        result = main(["error", "999999"])
-        assert result == 0
-        captured = capsys.readouterr()
-        assert "Unknown" in captured.out
+    def test_error_command_unknown_code(self) -> None:
+        result = _runner.invoke(main, ["error", "999999"])
+        assert result.exit_code == 0
+        assert "Unknown" in result.output

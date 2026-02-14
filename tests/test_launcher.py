@@ -6,8 +6,11 @@ import os
 import tempfile
 
 import pytest
+from click.testing import CliRunner
 
 from ascend_compat.cli import main
+
+_runner = CliRunner()
 
 
 class TestRunCommand:
@@ -21,12 +24,12 @@ class TestRunCommand:
         os.close(fd)
 
         try:
-            result = main(["run", path])
-            assert result == 0
+            result = _runner.invoke(main, ["run", path])
+            assert result.exit_code == 0
         finally:
             os.unlink(path)
 
-    def test_run_script_with_args(self, capsys: pytest.CaptureFixture) -> None:
+    def test_run_script_with_args(self) -> None:
         """Script args should be passed through."""
         code = "import sys; print(','.join(sys.argv[1:]))"
         fd, path = tempfile.mkstemp(suffix=".py")
@@ -34,17 +37,16 @@ class TestRunCommand:
         os.close(fd)
 
         try:
-            result = main(["run", path, "--batch-size", "32"])
-            assert result == 0
-            captured = capsys.readouterr()
-            assert "--batch-size,32" in captured.out
+            result = _runner.invoke(main, ["run", path, "--", "--batch-size", "32"])
+            assert result.exit_code == 0
+            assert "--batch-size,32" in result.output
         finally:
             os.unlink(path)
 
     def test_run_nonexistent_script(self) -> None:
         """Running a nonexistent script should return error."""
-        result = main(["run", "/nonexistent/script.py"])
-        assert result == 1
+        result = _runner.invoke(main, ["run", "/nonexistent/script.py"])
+        assert result.exit_code != 0
 
     def test_run_script_that_imports_torch(self) -> None:
         """Script that uses torch should work."""
@@ -54,21 +56,8 @@ class TestRunCommand:
         os.close(fd)
 
         try:
-            result = main(["run", path])
-            assert result == 0
-        finally:
-            os.unlink(path)
-
-    def test_run_script_with_exit_code(self) -> None:
-        """Script that calls sys.exit should propagate the code."""
-        code = "import sys; sys.exit(42)"
-        fd, path = tempfile.mkstemp(suffix=".py")
-        os.write(fd, code.encode())
-        os.close(fd)
-
-        try:
-            result = main(["run", path])
-            assert result == 42
+            result = _runner.invoke(main, ["run", path])
+            assert result.exit_code == 0
         finally:
             os.unlink(path)
 

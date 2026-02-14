@@ -27,7 +27,7 @@ import sys
 
 def main() -> None:
     from ascend_compat.cli import main as cli_main
-    sys.exit(cli_main())
+    cli_main()
 
 
 if __name__ == "__main__":

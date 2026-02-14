@@ -29,6 +29,8 @@ classifiers = [
 ]
 dependencies = [
     "torch>=2.0.0",
+    "click>=8.0",
+    "libcst>=1.0",
 ]
 
 [project.optional-dependencies]
@@ -50,6 +52,7 @@ docs = [
 
 [project.scripts]
 ascend-compat = "ascend_compat.cli:main"
+cuda-morph = "ascend_compat.cli:main"
 
 [project.urls]
 Homepage = "https://github.com/JosephAhn23/cuda-morph"
