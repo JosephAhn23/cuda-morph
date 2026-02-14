@@ -13,6 +13,28 @@ output = model.generate(**inputs)
 
 ---
 
+## Screenshots
+
+### NPU Hardware Detection
+
+<p align="center">
+  <img src="docs/images/npu-smi-info.png" alt="npu-smi showing Ascend 910B devices" width="700">
+</p>
+
+### Environment Diagnostics & System Info
+
+<p align="center">
+  <img src="docs/images/cuda-morph-doctor-info.png" alt="cuda-morph doctor and info output" width="700">
+</p>
+
+### Live Monitor
+
+<p align="center">
+  <img src="docs/images/cuda-morph-monitor.png" alt="cuda-morph monitor showing live NPU utilization" width="700">
+</p>
+
+---
+
 ## What this is
 
 cuda-morph is a runtime shim that intercepts `torch.cuda` calls and routes them to whatever accelerator is actually present — AMD ROCm, Intel XPU, Huawei Ascend, Cambricon MLU, or any future PyTorch backend.
@@ -87,22 +109,11 @@ cuda_morph.activate()
 ### Check what's detected
 
 ```bash
-$ cuda-morph info
-
-cuda-morph system info
-==================================================
-Preferred backend:   cpu
-Has Ascend NPU:      False
-Has Cambricon MLU:   False
-Has AMD ROCm:        False
-Has Intel XPU:       False
-
-Registered backends:
-  [--] Huawei Ascend NPU         adapter=torch_npu    (not installed)
-  [--] Cambricon MLU             adapter=torch_mlu    (not installed)
-  [--] AMD ROCm                  adapter=torch        (not detected)
-  [--] Intel GPU (XPU)           adapter=intel_ext... (not installed)
+cuda-morph info       # Show detected backends and shim status
+cuda-morph doctor     # Full environment diagnostics
 ```
+
+See the [screenshots above](#screenshots) for example output on an Ascend 910B system.
 
 ## Ecosystem patches
 
