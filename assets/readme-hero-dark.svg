@@ -1,40 +1,58 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" role="img" aria-label="cuda-morph hero dark screenshot">
   <defs>
     <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
-      <stop offset="0%" stop-color="#0b1220"/>
-      <stop offset="100%" stop-color="#111827"/>
+      <stop offset="0%" stop-color="#050811"/>
+      <stop offset="50%" stop-color="#0a1020"/>
+      <stop offset="100%" stop-color="#0d1428"/>
     </linearGradient>
+    <radialGradient id="bloomLeft" cx="0.22" cy="0.24" r="0.55">
+      <stop offset="0%" stop-color="#06b6d4" stop-opacity="0.30"/>
+      <stop offset="100%" stop-color="#06b6d4" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="bloomRight" cx="0.82" cy="0.25" r="0.55">
+      <stop offset="0%" stop-color="#8b5cf6" stop-opacity="0.34"/>
+      <stop offset="100%" stop-color="#8b5cf6" stop-opacity="0"/>
+    </radialGradient>
     <linearGradient id="accent" x1="0" x2="1" y1="0" y2="0">
       <stop offset="0%" stop-color="#22d3ee"/>
+      <stop offset="55%" stop-color="#60a5fa"/>
       <stop offset="100%" stop-color="#8b5cf6"/>
     </linearGradient>
-    <filter id="glow">
-      <feGaussianBlur stdDeviation="3" result="blur"/>
+    <filter id="strongGlow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="6" result="blur"/>
       <feMerge>
         <feMergeNode in="blur"/>
         <feMergeNode in="SourceGraphic"/>
       </feMerge>
     </filter>
   </defs>
+
   <rect width="1600" height="900" fill="url(#bg)"/>
-  <rect x="60" y="60" width="1480" height="780" rx="18" fill="none" stroke="url(#accent)" stroke-width="2"/>
-  <text x="800" y="170" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="86" font-weight="700" fill="#e5e7eb">cuda-morph</text>
-  <text x="800" y="245" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="50" font-weight="600" fill="#f3f4f6">Run PyTorch Anywhere</text>
-  <text x="800" y="295" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="34" fill="#9ca3af">No NVIDIA GPU required</text>
+  <rect width="1600" height="900" fill="url(#bloomLeft)"/>
+  <rect width="1600" height="900" fill="url(#bloomRight)"/>
 
-  <rect x="110" y="360" width="660" height="390" rx="12" fill="#0f172a" stroke="#ef4444" stroke-width="2"/>
-  <rect x="830" y="360" width="660" height="390" rx="12" fill="#0f172a" stroke="#22c55e" stroke-width="2"/>
-  <text x="440" y="405" text-anchor="middle" font-family="Consolas, monospace" font-size="28" fill="#fca5a5">CUDA ERROR</text>
-  <text x="1160" y="405" text-anchor="middle" font-family="Consolas, monospace" font-size="28" fill="#86efac">SUCCESSFUL EXECUTION</text>
+  <rect x="52" y="52" width="1496" height="796" rx="18" fill="none" stroke="url(#accent)" stroke-width="2"/>
+  <rect x="64" y="64" width="1472" height="772" rx="15" fill="none" stroke="#22d3ee" stroke-opacity="0.16" stroke-width="1"/>
 
-  <text x="145" y="470" font-family="Consolas, monospace" font-size="27" fill="#f87171">RuntimeError: Torch not compiled</text>
-  <text x="145" y="510" font-family="Consolas, monospace" font-size="27" fill="#f87171">with CUDA enabled</text>
-  <text x="865" y="470" font-family="Consolas, monospace" font-size="27" fill="#4ade80">PyTorch model loaded</text>
-  <text x="865" y="510" font-family="Consolas, monospace" font-size="27" fill="#4ade80">Running on CPU / ROCm / XPU</text>
-  <text x="865" y="550" font-family="Consolas, monospace" font-size="27" fill="#4ade80">Time: 0.045s</text>
+  <text x="800" y="170" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="90" font-weight="700" fill="#e5e7eb">cuda-morph</text>
+  <text x="800" y="246" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="52" font-weight="600" fill="#f8fafc">Run PyTorch Anywhere</text>
+  <text x="800" y="298" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="34" fill="#9fb0c7">No NVIDIA GPU required</text>
 
-  <line x1="310" y1="590" x2="570" y2="700" stroke="#ef4444" stroke-width="20" stroke-linecap="round" filter="url(#glow)"/>
-  <line x1="570" y1="590" x2="310" y2="700" stroke="#ef4444" stroke-width="20" stroke-linecap="round" filter="url(#glow)"/>
+  <rect x="95" y="340" width="675" height="420" rx="14" fill="#0b1222" stroke="#f87171" stroke-width="2"/>
+  <rect x="830" y="340" width="675" height="420" rx="14" fill="#0b1222" stroke="#4ade80" stroke-width="2"/>
 
-  <polyline points="1020,650 1120,740 1300,560" fill="none" stroke="#22c55e" stroke-width="22" stroke-linecap="round" stroke-linejoin="round" filter="url(#glow)"/>
+  <text x="432" y="390" text-anchor="middle" font-family="Consolas, monospace" font-size="30" fill="#fecaca">BEFORE: CUDA FAILURE</text>
+  <text x="1168" y="390" text-anchor="middle" font-family="Consolas, monospace" font-size="30" fill="#bbf7d0">AFTER: COMPAT ROUTING</text>
+
+  <text x="130" y="465" font-family="Consolas, monospace" font-size="28" fill="#fca5a5">RuntimeError: Torch not compiled with CUDA</text>
+  <text x="130" y="505" font-family="Consolas, monospace" font-size="28" fill="#fca5a5">kernel image not available on this device</text>
+  <text x="130" y="545" font-family="Consolas, monospace" font-size="28" fill="#fca5a5">model.cuda() -> fail</text>
+
+  <text x="865" y="465" font-family="Consolas, monospace" font-size="28" fill="#86efac">[cuda-morph] interception enabled</text>
+  <text x="865" y="505" font-family="Consolas, monospace" font-size="28" fill="#86efac">routing: cuda -> npu/xpu/rocm/cpu</text>
+  <text x="865" y="545" font-family="Consolas, monospace" font-size="28" fill="#86efac">model output ready in 0.045s</text>
+
+  <line x1="300" y1="615" x2="560" y2="725" stroke="#ef4444" stroke-width="22" stroke-linecap="round" filter="url(#strongGlow)"/>
+  <line x1="560" y1="615" x2="300" y2="725" stroke="#ef4444" stroke-width="22" stroke-linecap="round" filter="url(#strongGlow)"/>
+  <polyline points="1015,670 1125,760 1315,560" fill="none" stroke="#22c55e" stroke-width="24" stroke-linecap="round" stroke-linejoin="round" filter="url(#strongGlow)"/>
 </svg>

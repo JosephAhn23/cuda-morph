@@ -1,20 +1,46 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" role="img" aria-label="cuda-morph cli dark screenshot">
   <defs>
     <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
-      <stop offset="0%" stop-color="#0b1220"/>
-      <stop offset="100%" stop-color="#1f2937"/>
+      <stop offset="0%" stop-color="#050a15"/>
+      <stop offset="100%" stop-color="#121b30"/>
     </linearGradient>
+    <radialGradient id="lightA" cx="0.2" cy="0.1" r="0.4">
+      <stop offset="0%" stop-color="#06b6d4" stop-opacity="0.20"/>
+      <stop offset="100%" stop-color="#06b6d4" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="lightB" cx="0.9" cy="0.2" r="0.45">
+      <stop offset="0%" stop-color="#8b5cf6" stop-opacity="0.24"/>
+      <stop offset="100%" stop-color="#8b5cf6" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="textGlow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
   </defs>
+
   <rect width="1600" height="900" fill="url(#bg)"/>
-  <rect x="50" y="50" width="1500" height="800" rx="14" fill="#0f172a" stroke="#334155" stroke-width="2"/>
-  <text x="95" y="125" font-family="Consolas, monospace" font-size="38" fill="#e5e7eb">$ cuda-morph info</text>
-  <text x="95" y="175" font-family="Consolas, monospace" font-size="34" fill="#93c5fd">Detected backends: CPU, Ascend, ROCm, Intel XPU</text>
-  <text x="95" y="230" font-family="Consolas, monospace" font-size="34" fill="#86efac">Status: ready</text>
+  <rect width="1600" height="900" fill="url(#lightA)"/>
+  <rect width="1600" height="900" fill="url(#lightB)"/>
 
-  <text x="95" y="315" font-family="Consolas, monospace" font-size="38" fill="#e5e7eb">$ cuda-morph check model.py</text>
-  <text x="95" y="365" font-family="Consolas, monospace" font-size="34" fill="#86efac">[PASS] CUDA dependency scan complete</text>
-  <text x="95" y="415" font-family="Consolas, monospace" font-size="34" fill="#86efac">[PASS] Safe porting suggestions available</text>
-  <text x="95" y="465" font-family="Consolas, monospace" font-size="34" fill="#86efac">[PASS] Runtime interception checks complete</text>
+  <rect x="45" y="45" width="1510" height="810" rx="16" fill="#0a1324" stroke="#334155" stroke-width="2"/>
+  <rect x="45" y="45" width="1510" height="62" rx="16" fill="#0f1b31" stroke="#1f2937" stroke-width="1"/>
+  <circle cx="82" cy="76" r="8" fill="#ef4444"/>
+  <circle cx="108" cy="76" r="8" fill="#f59e0b"/>
+  <circle cx="134" cy="76" r="8" fill="#22c55e"/>
+  <text x="800" y="84" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="27" fill="#94a3b8">Terminal • cuda-morph diagnostics</text>
 
-  <text x="95" y="570" font-family="Consolas, monospace" font-size="46" font-weight="700" fill="#a3e635">460+ tests passing (CPU fallback)</text>
+  <text x="95" y="165" font-family="Consolas, monospace" font-size="38" fill="#e5e7eb">$ cuda-morph info</text>
+  <text x="95" y="215" font-family="Consolas, monospace" font-size="32" fill="#7dd3fc">Detected: CPU, Ascend, ROCm, Intel XPU</text>
+  <text x="95" y="260" font-family="Consolas, monospace" font-size="32" fill="#86efac">Backend routing ready</text>
+
+  <text x="95" y="340" font-family="Consolas, monospace" font-size="38" fill="#e5e7eb">$ cuda-morph check model.py</text>
+  <text x="95" y="390" font-family="Consolas, monospace" font-size="32" fill="#86efac">[PASS] CUDA dependency scan complete</text>
+  <text x="95" y="435" font-family="Consolas, monospace" font-size="32" fill="#86efac">[PASS] Porting hints generated</text>
+  <text x="95" y="480" font-family="Consolas, monospace" font-size="32" fill="#86efac">[PASS] Runtime interception checks complete</text>
+
+  <rect x="80" y="560" width="1120" height="96" rx="12" fill="#10213e" stroke="#22d3ee" stroke-width="2"/>
+  <text x="110" y="622" font-family="Consolas, monospace" font-size="50" font-weight="700" fill="#bef264" filter="url(#textGlow)">460+ tests passing (CPU fallback)</text>
 </svg>

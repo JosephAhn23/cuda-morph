@@ -6,12 +6,11 @@ Run PyTorch workloads on non-NVIDIA hardware with minimal code changes.
   <img src="https://img.shields.io/badge/python-3.8%2B-1f6feb?style=for-the-badge&logo=python&logoColor=white" alt="Python 3.8+" />
   <img src="https://img.shields.io/badge/status-alpha-6e40c9?style=for-the-badge" alt="Alpha status" />
   <img src="https://img.shields.io/badge/license-Apache%202.0-0d1117?style=for-the-badge" alt="Apache 2.0 license" />
-  <img src="https://img.shields.io/badge/theme-dark%20first-111827?style=for-the-badge" alt="Dark first" />
 </p>
 
 ![cuda-morph dark hero](assets/readme-hero-dark.svg)
 
-**What you get:** existing CUDA-style PyTorch scripts keep running, while `cuda-morph` redirects calls to available backends (or safe CPU fallback).
+Existing CUDA-style PyTorch scripts keep running — `cuda-morph` redirects calls to available backends or falls back to CPU.
 
 ---
 
@@ -91,9 +90,9 @@ If you can test on non-NVIDIA accelerators, feedback is highly valuable: [open a
 ## CLI
 
 ```bash
-cuda-morph check model.py
-cuda-morph port model.py
-cuda-morph doctor
+cuda-morph check model.py     # check a script for compatibility issues
+cuda-morph port model.py      # generate porting suggestions
+cuda-morph doctor             # environment diagnostics
 cuda-morph doctor --full
 cuda-morph verify --device npu
 cuda-morph bench overhead
@@ -111,12 +110,6 @@ pip install -e ".[dev]"
 pytest tests/ -v
 pytest tests/ -v --run-hardware
 ```
-
----
-
-## Notes on screenshots
-
-The dark-mode visuals in this README are polished preview screenshots for presentation and storytelling. Replace with captured live outputs from your own environment when publishing benchmark claims.
 
 ---
 

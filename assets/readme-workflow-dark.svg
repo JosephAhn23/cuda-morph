@@ -1,38 +1,61 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" role="img" aria-label="cuda-morph workflow dark screenshot">
   <defs>
     <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
-      <stop offset="0%" stop-color="#0a0f1a"/>
-      <stop offset="100%" stop-color="#0f172a"/>
+      <stop offset="0%" stop-color="#050a15"/>
+      <stop offset="100%" stop-color="#0b1427"/>
     </linearGradient>
-    <linearGradient id="line" x1="0" x2="1" y1="0" y2="0">
+    <radialGradient id="nebulaA" cx="0.2" cy="0.2" r="0.5">
+      <stop offset="0%" stop-color="#06b6d4" stop-opacity="0.28"/>
+      <stop offset="100%" stop-color="#06b6d4" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="nebulaB" cx="0.8" cy="0.25" r="0.5">
+      <stop offset="0%" stop-color="#8b5cf6" stop-opacity="0.32"/>
+      <stop offset="100%" stop-color="#8b5cf6" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="panelStroke" x1="0" x2="1" y1="0" y2="0">
       <stop offset="0%" stop-color="#22d3ee"/>
-      <stop offset="100%" stop-color="#38bdf8"/>
+      <stop offset="100%" stop-color="#818cf8"/>
     </linearGradient>
+    <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="7" result="b"/>
+      <feMerge>
+        <feMergeNode in="b"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
   </defs>
+
   <rect width="1600" height="900" fill="url(#bg)"/>
-  <text x="80" y="110" font-family="Segoe UI, Arial, sans-serif" font-size="64" font-weight="700" fill="#e2e8f0">cuda-morph Workflow</text>
+  <rect width="1600" height="900" fill="url(#nebulaA)"/>
+  <rect width="1600" height="900" fill="url(#nebulaB)"/>
+  <rect x="40" y="40" width="1520" height="820" rx="18" fill="none" stroke="url(#panelStroke)" stroke-width="2"/>
 
-  <rect x="85" y="170" width="430" height="580" rx="14" fill="#111827" stroke="url(#line)" stroke-width="2"/>
-  <rect x="585" y="170" width="430" height="580" rx="14" fill="#111827" stroke="url(#line)" stroke-width="2"/>
-  <rect x="1085" y="170" width="430" height="580" rx="14" fill="#111827" stroke="url(#line)" stroke-width="2"/>
+  <text x="70" y="110" font-family="Segoe UI, Arial, sans-serif" font-size="62" font-weight="700" fill="#e2e8f0">cuda-morph Workflow</text>
+  <text x="70" y="152" font-family="Segoe UI, Arial, sans-serif" font-size="26" fill="#94a3b8">Drop in. Activate once. Run anywhere.</text>
 
-  <text x="300" y="240" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="42" font-weight="600" fill="#67e8f9">Before</text>
-  <text x="800" y="240" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="42" font-weight="600" fill="#67e8f9">Activate</text>
-  <text x="1300" y="240" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="42" font-weight="600" fill="#67e8f9">After</text>
+  <rect x="80" y="190" width="440" height="610" rx="16" fill="#0b1220" stroke="#22d3ee" stroke-width="2"/>
+  <rect x="580" y="190" width="440" height="610" rx="16" fill="#0b1220" stroke="#60a5fa" stroke-width="2"/>
+  <rect x="1080" y="190" width="440" height="610" rx="16" fill="#0b1220" stroke="#4ade80" stroke-width="2"/>
 
-  <text x="120" y="310" font-family="Consolas, monospace" font-size="24" fill="#cbd5e1">import torch</text>
-  <text x="120" y="350" font-family="Consolas, monospace" font-size="24" fill="#cbd5e1">model.cuda()</text>
-  <text x="120" y="390" font-family="Consolas, monospace" font-size="24" fill="#cbd5e1">output = model(data)</text>
+  <text x="300" y="255" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="40" font-weight="700" fill="#67e8f9">Before</text>
+  <text x="800" y="255" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="40" font-weight="700" fill="#93c5fd">Activate</text>
+  <text x="1300" y="255" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="40" font-weight="700" fill="#86efac">After</text>
 
-  <text x="620" y="310" font-family="Consolas, monospace" font-size="24" fill="#cbd5e1">import ascend_compat</text>
-  <text x="620" y="350" font-family="Consolas, monospace" font-size="24" fill="#22d3ee">ascend_compat.activate()</text>
-  <text x="620" y="390" font-family="Consolas, monospace" font-size="24" fill="#cbd5e1"># one line</text>
+  <text x="115" y="340" font-family="Consolas, monospace" font-size="25" fill="#cbd5e1">import torch</text>
+  <text x="115" y="380" font-family="Consolas, monospace" font-size="25" fill="#cbd5e1">model.cuda()</text>
+  <text x="115" y="420" font-family="Consolas, monospace" font-size="25" fill="#cbd5e1">output = model(data)</text>
+  <text x="115" y="470" font-family="Consolas, monospace" font-size="23" fill="#fda4af">RuntimeError: CUDA unavailable</text>
 
-  <text x="1120" y="310" font-family="Consolas, monospace" font-size="24" fill="#cbd5e1">import torch</text>
-  <text x="1120" y="350" font-family="Consolas, monospace" font-size="24" fill="#4ade80">model.cuda()  # intercepted</text>
-  <text x="1120" y="390" font-family="Consolas, monospace" font-size="24" fill="#4ade80">output = model(data)</text>
-  <text x="1120" y="430" font-family="Consolas, monospace" font-size="24" fill="#4ade80">device: backend-routed</text>
+  <text x="615" y="340" font-family="Consolas, monospace" font-size="25" fill="#cbd5e1">import ascend_compat</text>
+  <rect x="605" y="360" width="390" height="52" rx="9" fill="#0e1c36" stroke="#60a5fa" stroke-width="2"/>
+  <text x="625" y="394" font-family="Consolas, monospace" font-size="25" fill="#7dd3fc">ascend_compat.activate()</text>
+  <text x="615" y="460" font-family="Consolas, monospace" font-size="23" fill="#93c5fd">interception map loaded</text>
 
-  <polygon points="530,445 580,445 580,420 640,465 580,510 580,485 530,485" fill="#38bdf8"/>
-  <polygon points="1030,445 1080,445 1080,420 1140,465 1080,510 1080,485 1030,485" fill="#38bdf8"/>
+  <text x="1115" y="340" font-family="Consolas, monospace" font-size="25" fill="#cbd5e1">import torch</text>
+  <text x="1115" y="380" font-family="Consolas, monospace" font-size="25" fill="#86efac">model.cuda()   # intercepted</text>
+  <text x="1115" y="420" font-family="Consolas, monospace" font-size="25" fill="#86efac">output = model(data)</text>
+  <text x="1115" y="470" font-family="Consolas, monospace" font-size="23" fill="#86efac">route: npu / xpu / rocm / cpu</text>
+
+  <polygon points="535,470 590,470 590,445 655,495 590,545 590,520 535,520" fill="#38bdf8" filter="url(#glow)"/>
+  <polygon points="1035,470 1090,470 1090,445 1155,495 1090,545 1090,520 1035,520" fill="#22c55e" filter="url(#glow)"/>
 </svg>
