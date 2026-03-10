@@ -67,10 +67,11 @@ Full matrix: [docs/compatibility_matrix.md](docs/compatibility_matrix.md)
 ## Validation snapshot
 
 ![cuda-morph cli dark](assets/readme-cli-dark.svg)
+![ROCm .cuda() proof screenshot](assets/amd-rocm-cuda-proof.png)
 
 - 460+ tests passing in CPU-fallback mode.
-- Architecture and shim behavior are strongly simulation-validated.
-- Real hardware validation is still needed for full production confidence.
+- Real hardware proof captured on RunPod AMD ROCm: `.cuda()` matmul ran on `cuda:0` and reported `AMD Radeon Graphics`.
+- Core `.cuda()` routing on non-NVIDIA hardware is now validated; broader operator and ecosystem coverage is still in progress.
 
 If you can test on non-NVIDIA accelerators, feedback is highly valuable: [open an issue](https://github.com/JosephAhn23/cuda-morph/issues).
 
