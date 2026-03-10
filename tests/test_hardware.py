@@ -3,7 +3,7 @@
 Every test in this file is marked ``@pytest.mark.hardware`` and will be
 auto-skipped unless ``--run-hardware`` is passed on the pytest command line.
 
-These tests are the **proof layer** — they verify that ascend-compat
+These tests are the **proof layer** — they verify that cuda-morph
 actually works on real Ascend hardware, not just in CPU simulation.
 
 To run::
@@ -18,7 +18,7 @@ What passes means:
     - Ecosystem patches don't crash on real models
 
 What fails means:
-    - A genuine bug in ascend-compat's argument mapping or patching logic
+    - A genuine bug in cuda-morph's argument mapping or patching logic
     - File a bug: include torch_npu version, CANN version, and NPU model
 """
 

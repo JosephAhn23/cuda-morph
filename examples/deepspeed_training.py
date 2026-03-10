@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Example: DeepSpeed distributed training on Ascend NPU.
 
-This script demonstrates how to use ascend-compat with DeepSpeed for
+This script demonstrates how to use cuda-morph with DeepSpeed for
 distributed training.  The key changes vs. standard CUDA training are:
 
 1. ``ascend_compat.activate()`` at the top
@@ -9,22 +9,22 @@ distributed training.  The key changes vs. standard CUDA training are:
 3. Everything else is standard DeepSpeed code
 
 Requirements:
-    pip install torch deepspeed ascend-compat
+    pip install torch deepspeed cuda-morph
     pip install torch-npu  # From Huawei's repository
 
 Single-device test (CPU fallback):
     python examples/deepspeed_training.py
 
 Multi-device on Ascend (4 NPUs):
-    ascend-compat run deepspeed --num_gpus=4 examples/deepspeed_training.py
+    cuda-morph run deepspeed --num_gpus=4 examples/deepspeed_training.py
 
-What ascend-compat fixes:
+What cuda-morph fixes:
     - NCCL → HCCL backend selection (DeepSpeed defaults to NCCL)
     - CUDA_VISIBLE_DEVICES → ASCEND_RT_VISIBLE_DEVICES mapping
     - DeepSpeed timer.py stream sync (torch.cuda.Event → torch.npu.Event)
 """
 
-# -- Step 1: Activate ascend-compat BEFORE any other imports ----------------
+# -- Step 1: Activate cuda-morph BEFORE any other imports ----------------
 import ascend_compat
 ascend_compat.activate()
 
@@ -80,7 +80,7 @@ def main() -> None:
         device = torch.device("cpu")
 
     print(f"Device: {device}")
-    print(f"ascend-compat active: {ascend_compat.is_activated()}")
+    print(f"cuda-morph active: {ascend_compat.is_activated()}")
 
     model = TinyTransformer()
 

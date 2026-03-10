@@ -1,4 +1,4 @@
-"""Structured logging for the ascend-compat shim layer.
+"""Structured logging for the cuda-morph shim layer.
 
 Every translation from a CUDA API call to an Ascend/CANN equivalent is logged
 at DEBUG level so developers can see exactly what the shim is doing under the
@@ -23,9 +23,9 @@ from typing import Optional
 # Module-level constants
 # ---------------------------------------------------------------------------
 
-_LOG_FORMAT = "[ascend-compat] %(levelname)s %(name)s: %(message)s"
+_LOG_FORMAT = "[cuda-morph] %(levelname)s %(name)s: %(message)s"
 _LOG_FORMAT_VERBOSE = (
-    "[ascend-compat %(asctime)s] %(levelname)s %(name)s (%(filename)s:%(lineno)d): %(message)s"
+    "[cuda-morph %(asctime)s] %(levelname)s %(name)s (%(filename)s:%(lineno)d): %(message)s"
 )
 
 # Environment variable that users can set to control verbosity.

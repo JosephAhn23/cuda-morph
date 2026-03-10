@@ -38,7 +38,7 @@ class ErrorInfo:
     fix: str             # Suggested fix
     references: str = "" # Links to relevant docs/issues
     cann_versions: str = ""  # CANN versions where this error is known (e.g. "7.0+", "8.0.RC1-RC3")
-    added_in: str = ""       # ascend-compat version that added this entry
+    added_in: str = ""       # cuda-morph version that added this entry
 
 
 # ---------------------------------------------------------------------------
@@ -64,8 +64,8 @@ def _add(
 _add("507008", "runtime",
      "ACL stream synchronize failed",
      "Device-side error during kernel execution (often OOM or invalid op)",
-     "Check memory usage with `ascend-compat doctor`. Reduce batch size. "
-     "Verify all ops are NPU-compatible with `ascend-compat check`.",
+     "Check memory usage with `cuda-morph doctor`. Reduce batch size. "
+     "Verify all ops are NPU-compatible with `cuda-morph check`.",
      cann_versions="6.3+", added_in="0.2.0")
 
 _add("507011", "runtime",
@@ -78,7 +78,7 @@ _add("507015", "runtime",
      "ACL runtime internal error",
      "CANN runtime encountered an unexpected state",
      "Restart the process. If persistent, check CANN/driver version compatibility. "
-     "Run `ascend-compat doctor` to verify versions.")
+     "Run `cuda-morph doctor` to verify versions.")
 
 _add("507035", "operator",
      "Operator execution failed — internal kernel error",
@@ -151,7 +151,7 @@ _add("99999", "runtime",
      "(1) version mismatch between CANN/driver/firmware, "
      "(2) accessing uninitialized device memory, "
      "(3) race condition in multi-stream execution",
-     "Run `ascend-compat doctor` to check versions. "
+     "Run `cuda-morph doctor` to check versions. "
      "Enable CANN debug logging: export ASCEND_GLOBAL_LOG_LEVEL=1. "
      "Check dmesg for kernel-level NPU errors. "
      "If reproducible, file a bug at https://gitee.com/ascend/pytorch/issues",

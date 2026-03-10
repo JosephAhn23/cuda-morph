@@ -1,8 +1,8 @@
-"""ascend-compat: CUDA → Ascend NPU compatibility shim for PyTorch.
+"""cuda-morph: CUDA → Ascend NPU compatibility shim for PyTorch.
 
 This is **not** a replacement for torch_npu.  torch_npu already handles the
 hard C++/CANN integration via PyTorch's PrivateUse1 dispatch mechanism.
-ascend-compat is a *thin, high-value ecosystem compatibility bridge* that
+cuda-morph is a *thin, high-value ecosystem compatibility bridge* that
 fixes the last mile: existing CUDA-assuming Python code that hard-codes
 ``torch.cuda`` calls.
 
@@ -27,7 +27,7 @@ Activation Modes
 ----------------
 ``import ascend_compat`` does **not** automatically patch ``torch.cuda``
 by default.  This is a deliberate design choice: imports should not have
-global side effects, especially when ascend-compat might be imported
+global side effects, especially when cuda-morph might be imported
 transitively by a library.
 
 There are three ways to activate the shim:
@@ -39,7 +39,7 @@ There are three ways to activate the shim:
 
 2. **CLI launcher** (recommended for running existing scripts unchanged)::
 
-       ascend-compat run script.py
+       cuda-morph run script.py
 
 3. **Environment variable** (opt-in to auto-activate on import)::
 
@@ -161,10 +161,10 @@ def _check_activation_at_exit() -> None:
 
     if import_in_main:
         warnings.warn(
-            "ascend-compat was imported but activate() was never called. "
+            "cuda-morph was imported but activate() was never called. "
             "Since v0.3.0, auto-activation on import is removed. "
             "Add `ascend_compat.activate()` after import, use "
-            "`ascend-compat run script.py`, or set "
+            "`cuda-morph run script.py`, or set "
             "ASCEND_COMPAT_AUTO_ACTIVATE=1. "
             "See MIGRATION.md for details.",
             DeprecationWarning,
@@ -179,7 +179,7 @@ _atexit.register(_check_activation_at_exit)
 # ---------------------------------------------------------------------------
 # We only auto-activate when the user has explicitly opted in via env var.
 # This prevents the "library import has global side effects" problem.
-# The CLI launcher (ascend-compat run) sets this var automatically.
+# The CLI launcher (cuda-morph run) sets this var automatically.
 if os.environ.get("ASCEND_COMPAT_AUTO_ACTIVATE", "").strip() == "1":
     activate()
 

@@ -68,7 +68,7 @@ def _check_version_tested(lib_name: str, version: Tuple[int, ...],
     if version and version[:2] not in tested:
         tested_strs = [f"{v[0]}.{v[1]}" for v in tested]
         warnings.warn(
-            f"{lib_name} {version[0]}.{version[1]} has not been tested with ascend-compat. "
+            f"{lib_name} {version[0]}.{version[1]} has not been tested with cuda-morph. "
             f"Tested versions: {', '.join(tested_strs)}. "
             f"Patches may not work correctly.",
             FutureWarning,
@@ -133,7 +133,7 @@ def _patch_flash_attn_check() -> None:
                 # If flash_attn (or our shim) is importable, return True
                 try:
                     from ascend_compat.ecosystem import flash_attn  # noqa: F401
-                    logger.debug("is_flash_attn_2_available() → True (via ascend-compat shim)")
+                    logger.debug("is_flash_attn_2_available() → True (via cuda-morph shim)")
                     return True
                 except ImportError:
                     return original(*args, **kwargs)

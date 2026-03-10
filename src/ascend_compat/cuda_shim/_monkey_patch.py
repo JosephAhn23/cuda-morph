@@ -182,7 +182,7 @@ def activate() -> None:
     npu_ver = _torch_npu_version()
 
     logger.info(
-        "Activating ascend-compat (backend=%s, PyTorch=%d.%d.%d, torch_npu=%d.%d.%d)",
+        "Activating cuda-morph (backend=%s, PyTorch=%d.%d.%d, torch_npu=%d.%d.%d)",
         backend.value, *pt_ver, *npu_ver,
     )
 
@@ -228,7 +228,7 @@ def deactivate() -> None:
 
     _manager.revert_all()
     uninstall_import_hook()
-    logger.info("ascend-compat deactivated — all patches reverted")
+    logger.info("cuda-morph deactivated — all patches reverted")
 
 
 def is_activated() -> bool:
@@ -330,7 +330,7 @@ def _make_proxy(target: Callable[..., Any], cuda_name: str, npu_name: str) -> Ca
         logger.debug("torch.cuda.%s → torch.npu.%s", cuda_name, npu_name)
         return target(*args, **kwargs)
     proxy.__name__ = cuda_name
-    proxy.__doc__ = f"ascend-compat: torch.cuda.{cuda_name} → torch.npu.{npu_name}"
+    proxy.__doc__ = f"cuda-morph: torch.cuda.{cuda_name} → torch.npu.{npu_name}"
     return proxy
 
 
@@ -340,7 +340,7 @@ def _make_unsupported_stub(cuda_name: str, note: str) -> Callable[..., Any]:
         raise NotImplementedError(
             f"torch.cuda.{cuda_name} is not supported on Ascend NPU.\n"
             f"  {note}\n"
-            f"  See: ascend-compat docs/compatibility_matrix.md"
+            f"  See: cuda-morph docs/compatibility_matrix.md"
         )
     stub.__name__ = cuda_name
     stub.__doc__ = f"UNSUPPORTED on Ascend: {note}"

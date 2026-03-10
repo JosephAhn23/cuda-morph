@@ -88,7 +88,7 @@ def apply() -> None:
         if vllm_ver[:2] not in _TESTED_VLLM:
             tested_strs = [f"{v[0]}.{v[1]}" for v in _TESTED_VLLM]
             warnings.warn(
-                f"vLLM {vllm_ver[0]}.{vllm_ver[1]} has not been tested with ascend-compat. "
+                f"vLLM {vllm_ver[0]}.{vllm_ver[1]} has not been tested with cuda-morph. "
                 f"Tested: {', '.join(tested_strs)}.",
                 FutureWarning,
                 stacklevel=2,

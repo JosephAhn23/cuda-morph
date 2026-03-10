@@ -33,7 +33,7 @@ body:
     id: error-code
     attributes:
       label: CANN Error Code (if applicable)
-      description: "Run `ascend-compat error <code>` if you have one"
+      description: "Run `cuda-morph error <code>` if you have one"
       render: text
 
   - type: textarea
@@ -54,5 +54,5 @@ body:
     id: doctor-output
     attributes:
       label: Doctor Output
-      description: "Paste `ascend-compat doctor` output"
+      description: "Paste `cuda-morph doctor` output"
       render: text

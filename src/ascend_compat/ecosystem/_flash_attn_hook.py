@@ -1,4 +1,4 @@
-"""Import hook that registers ascend-compat's flash_attn shim as a package.
+"""Import hook that registers cuda-morph's flash_attn shim as a package.
 
 When activated, ``from flash_attn import flash_attn_func`` will resolve to
 our compatibility wrapper around ``torch_npu.npu_fusion_attention`` — with

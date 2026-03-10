@@ -121,7 +121,7 @@ class FallbackReport:
             "  - Update CANN to the latest version for broader op coverage"
         )
         lines.append(
-            "  - Run `ascend-compat check your_script.py` to identify CUDA-specific code"
+            "  - Run `cuda-morph check your_script.py` to identify CUDA-specific code"
         )
 
         return "\n".join(lines)

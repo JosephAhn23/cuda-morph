@@ -2,11 +2,11 @@
 """Example: vLLM inference serving on Ascend NPU.
 
 This script demonstrates how to set up vLLM for LLM serving on Ascend
-NPU using ascend-compat.  It validates the environment, checks
+NPU using cuda-morph.  It validates the environment, checks
 quantization compatibility, and runs a sample inference.
 
 Requirements:
-    pip install torch vllm ascend-compat
+    pip install torch vllm cuda-morph
     pip install torch-npu vllm-ascend  # From Huawei's repository
 
 Quick test (CPU, no vLLM required):
@@ -14,18 +14,18 @@ Quick test (CPU, no vLLM required):
     # Validates environment and quantization compatibility
 
 Full serving on Ascend:
-    ascend-compat run python -m vllm.entrypoints.openai.api_server \
+    cuda-morph run python -m vllm.entrypoints.openai.api_server \
         --model Qwen/Qwen2-7B \
         --tensor-parallel-size 4
 
-What ascend-compat fixes:
+What cuda-morph fixes:
     - CUDA_VISIBLE_DEVICES → ASCEND_RT_VISIBLE_DEVICES for tensor parallelism
     - CANN environment validation for custom op compilation
     - Quantization method compatibility checking (W8A8 yes, GPTQ/AWQ no)
     - Attention backend routing to NPU-native implementation
 """
 
-# -- Step 1: Activate ascend-compat ----------------------------------------
+# -- Step 1: Activate cuda-morph ----------------------------------------
 import ascend_compat
 ascend_compat.activate()
 
@@ -46,7 +46,7 @@ def check_environment() -> bool:
 
     # System info
     print(f"\n  PyTorch:        {torch.__version__}")
-    print(f"  ascend-compat:  {ascend_compat.__version__}")
+    print(f"  cuda-morph:  {ascend_compat.__version__}")
 
     try:
         import torch_npu

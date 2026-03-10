@@ -234,7 +234,7 @@ def _check_npu_device(info: VersionInfo) -> CheckResult:
 def format_report(results: List[CheckResult]) -> str:
     """Format check results as a human-readable report."""
     icons = {"ok": "[OK]", "warning": "[!!]", "error": "[XX]", "skipped": "[--]"}
-    lines = ["ascend-compat doctor — environment check", "=" * 50]
+    lines = ["cuda-morph doctor — environment check", "=" * 50]
     for r in results:
         icon = icons.get(r.status, "[??]")
         lines.append(f"  {icon} {r.name}: {r.message}")

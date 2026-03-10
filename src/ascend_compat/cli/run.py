@@ -13,7 +13,7 @@ import click
 @click.argument("script", type=click.Path(exists=True))
 @click.argument("script_args", nargs=-1, type=click.UNPROCESSED)
 def run(script: str, script_args: Tuple[str, ...]) -> None:
-    """Run a script with full ascend-compat shims active."""
+    """Run a script with full cuda-morph shims active."""
     import runpy
 
     os.environ["ASCEND_COMPAT_AUTO_ACTIVATE"] = "1"

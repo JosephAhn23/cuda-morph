@@ -1,4 +1,4 @@
-"""Tests for the launcher (ascend-compat run, python -m ascend_compat)."""
+"""Tests for the launcher (cuda-morph run, python -m ascend_compat)."""
 
 from __future__ import annotations
 
@@ -14,11 +14,11 @@ _runner = CliRunner()
 
 
 class TestRunCommand:
-    """Tests for the `ascend-compat run` command."""
+    """Tests for the `cuda-morph run` command."""
 
     def test_run_simple_script(self) -> None:
         """Run a simple Python script through the launcher."""
-        code = "import sys; print('hello from ascend-compat')"
+        code = "import sys; print('hello from cuda-morph')"
         fd, path = tempfile.mkstemp(suffix=".py")
         os.write(fd, code.encode())
         os.close(fd)

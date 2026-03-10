@@ -23,7 +23,7 @@ logger = get_logger(__name__)
 
 
 @click.group()
-@click.version_option(package_name="ascend-compat")
+@click.version_option(package_name="cuda-morph")
 def main() -> None:
     """cuda-morph: Run CUDA code on any accelerator."""
 

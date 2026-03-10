@@ -7,7 +7,7 @@ overhead itself.  This module provides that infrastructure.
 Three measurement modes
 -----------------------
 
-1. **Shim overhead** — How much time does ascend-compat's monkey-patching
+1. **Shim overhead** — How much time does cuda-morph's monkey-patching
    add to each ``torch.cuda`` call?  This measures the proxy/routing cost
    in isolation, without any hardware dependency.
 
@@ -32,8 +32,8 @@ Usage::
 
 CLI::
 
-    ascend-compat bench overhead
-    ascend-compat bench ops --device npu --csv results.csv
+    cuda-morph bench overhead
+    cuda-morph bench ops --device npu --csv results.csv
 """
 
 from __future__ import annotations
@@ -203,10 +203,10 @@ def _timeit(fn: Callable[[], Any], iterations: int = 10000, warmup: int = 100) -
 
 
 class ShimOverheadBench:
-    """Measure the overhead of ascend-compat's monkey-patching layer.
+    """Measure the overhead of cuda-morph's monkey-patching layer.
 
     This benchmarks the *proxy function cost* — the extra microseconds
-    added by routing ``torch.cuda.X`` through ascend-compat to ``torch.npu.X``.
+    added by routing ``torch.cuda.X`` through cuda-morph to ``torch.npu.X``.
     It compares calling a torch function directly vs. through the shim proxy.
     """
 

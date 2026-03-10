@@ -1,19 +1,19 @@
 name: Bug Report
-description: Report an issue with ascend-compat
+description: Report an issue with cuda-morph
 title: "[Bug]: "
 labels: ["bug"]
 body:
   - type: markdown
     attributes:
       value: |
-        Thanks for reporting! Please run `ascend-compat doctor` and paste the output below.
+        Thanks for reporting! Please run `cuda-morph doctor` and paste the output below.
 
   - type: textarea
     id: description
     attributes:
       label: Bug Description
       description: What happened? What did you expect?
-      placeholder: "When I run my model with ascend-compat, I get..."
+      placeholder: "When I run my model with cuda-morph, I get..."
     validations:
       required: true
 
@@ -21,7 +21,7 @@ body:
     id: doctor-output
     attributes:
       label: Doctor Output
-      description: "Paste the output of `ascend-compat doctor`"
+      description: "Paste the output of `cuda-morph doctor`"
       render: text
     validations:
       required: true

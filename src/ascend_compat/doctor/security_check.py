@@ -256,7 +256,7 @@ def full_security_check() -> List[IntegrityResult]:
 def format_security_report(results: List[IntegrityResult]) -> str:
     """Format security check results as a human-readable report."""
     icons = {"ok": "[OK]", "warning": "[!!]", "error": "[XX]", "unknown": "[??]"}
-    lines = ["ascend-compat security check", "=" * 50]
+    lines = ["cuda-morph security check", "=" * 50]
     for r in results:
         icon = icons.get(r.status, "[??]")
         lines.append(f"  {icon} {r.package} ({r.version}): {r.message}")

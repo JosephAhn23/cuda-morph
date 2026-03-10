@@ -2,16 +2,16 @@
 
 Provides two main commands:
 
-``ascend-compat check <file.py>``
+``cuda-morph check <file.py>``
     Scan a Python file for CUDA dependencies and report migration difficulty.
     Produces a structured report showing which CUDA calls are transparent,
     which need wrappers, and which are unsupported on Ascend.
 
-``ascend-compat port <file.py>``
-    Auto-rewrite simple CUDA calls to ascend-compat equivalents.  Creates
+``cuda-morph port <file.py>``
+    Auto-rewrite simple CUDA calls to cuda-morph equivalents.  Creates
     a backup of the original file and writes the ported version.
 
-``ascend-compat info``
+``cuda-morph info``
     Show detected hardware and current shim status.
 
 Architecture
@@ -71,7 +71,7 @@ class CheckReport:
         """Return a human-readable summary of the report."""
         lines = [
             f"╔══════════════════════════════════════════════════════════════╗",
-            f"║  ascend-compat migration check: {Path(self.file_path).name:<28}║",
+            f"║  cuda-morph migration check: {Path(self.file_path).name:<28}║",
             f"╠══════════════════════════════════════════════════════════════╣",
             f"║  Total CUDA references:  {self.total_cuda_refs:<34}║",
             f"║  Migration difficulty:   {self.migration_difficulty:<34}║",
@@ -85,7 +85,7 @@ class CheckReport:
 
         status_labels = {
             "transparent": "✅ Transparent (work as-is)",
-            "needs_wrapper": "🔄 Needs wrapper (ascend-compat handles)",
+            "needs_wrapper": "🔄 Needs wrapper (cuda-morph handles)",
             "unsupported": "❌ Unsupported (manual rewrite needed)",
             "unknown": "❓ Unknown (test on Ascend hardware)",
         }
@@ -403,7 +403,7 @@ def _assess_difficulty(report: CheckReport) -> str:
 
 
 def port_file(file_path: str, dry_run: bool = False) -> str:
-    """Add ascend-compat shim activation to a CUDA-dependent Python file.
+    """Add cuda-morph shim activation to a CUDA-dependent Python file.
 
     The shim approach: rather than rewriting individual ``torch.cuda.*``
     calls (which would require AST-level rewriting to be safe), we add
@@ -524,9 +524,9 @@ def show_info() -> str:
 
 
 def _run_script(script_path: str, script_args: List[str]) -> int:
-    """Launch a Python script with full ascend-compat shims active.
+    """Launch a Python script with full cuda-morph shims active.
 
-    This is the ``ascend-compat run`` command.  It:
+    This is the ``cuda-morph run`` command.  It:
     1. Sets ASCEND_COMPAT_AUTO_ACTIVATE so any ``import ascend_compat`` in the
        user script triggers activation automatically
     2. Explicitly activates the cuda_shim
@@ -590,16 +590,16 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     Usage::
 
-        ascend-compat check model.py
-        ascend-compat check model.py --json
-        ascend-compat port model.py
-        ascend-compat port model.py --dry-run
-        ascend-compat doctor
-        ascend-compat error 507035
-        ascend-compat info
+        cuda-morph check model.py
+        cuda-morph check model.py --json
+        cuda-morph port model.py
+        cuda-morph port model.py --dry-run
+        cuda-morph doctor
+        cuda-morph error 507035
+        cuda-morph info
     """
     parser = argparse.ArgumentParser(
-        prog="ascend-compat",
+        prog="cuda-morph",
         description="CUDA → Ascend NPU migration tool",
     )
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
@@ -617,7 +617,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     # port command
     port_parser = subparsers.add_parser(
         "port",
-        help="Auto-rewrite simple CUDA calls to ascend-compat",
+        help="Auto-rewrite simple CUDA calls to cuda-morph",
     )
     port_parser.add_argument("file", help="Python file to port")
     port_parser.add_argument(
@@ -644,7 +644,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     # run command
     run_parser = subparsers.add_parser(
         "run",
-        help="Run a script with full ascend-compat shims active",
+        help="Run a script with full cuda-morph shims active",
     )
     run_parser.add_argument("script", help="Python script to run")
     run_parser.add_argument(

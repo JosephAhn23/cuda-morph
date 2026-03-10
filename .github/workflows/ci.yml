@@ -99,10 +99,10 @@ jobs:
 
       - name: CLI smoke tests
         run: |
-          ascend-compat info
-          ascend-compat doctor
-          ascend-compat error 507035
+          cuda-morph info
+          cuda-morph doctor
+          cuda-morph error 507035
           echo 'import torch; torch.cuda.is_available()' > /tmp/test.py
-          ascend-compat check /tmp/test.py
-          ascend-compat check /tmp/test.py --json
+          cuda-morph check /tmp/test.py
+          cuda-morph check /tmp/test.py --json
           python -m ascend_compat info

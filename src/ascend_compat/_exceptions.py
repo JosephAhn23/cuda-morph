@@ -1,7 +1,7 @@
-"""Custom exception hierarchy for ascend-compat.
+"""Custom exception hierarchy for cuda-morph.
 
 Provides distinct exception types so consumers can distinguish
-ascend-compat errors from unrelated failures in their except clauses.
+cuda-morph errors from unrelated failures in their except clauses.
 
 Usage::
 
@@ -17,7 +17,7 @@ from __future__ import annotations
 
 
 class AscendCompatError(Exception):
-    """Base exception for all ascend-compat errors.
+    """Base exception for all cuda-morph errors.
 
     Catch this to handle any error raised by the library without
     catching unrelated exceptions.

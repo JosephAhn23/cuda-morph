@@ -125,7 +125,7 @@ def _is_backend_available(name: str) -> bool:
 def get_compile_info() -> Dict[str, Any]:
     """Return information about torch.compile configuration.
 
-    Useful for diagnostics (``ascend-compat doctor``).
+    Useful for diagnostics (``cuda-morph doctor``).
     """
     info: Dict[str, Any] = {
         "recommended_backend": get_compile_backend(),
@@ -270,8 +270,8 @@ def safe_compile(model: Any, **kwargs: Any) -> Any:
             )
 
         print(
-            f"[ascend-compat] torch.compile failed ({type(exc).__name__}). "
-            f"Falling back to eager mode. Run `ascend-compat compile` for diagnostics.",
+            f"[cuda-morph] torch.compile failed ({type(exc).__name__}). "
+            f"Falling back to eager mode. Run `cuda-morph compile` for diagnostics.",
             file=sys.stderr,
         )
         return model
@@ -285,7 +285,7 @@ def safe_compile(model: Any, **kwargs: Any) -> Any:
 class CompatibilityPolicy:
     """Define behavior for untested PyTorch versions.
 
-    When a new PyTorch release (e.g. 2.6) comes out before ascend-compat
+    When a new PyTorch release (e.g. 2.6) comes out before cuda-morph
     has been updated, users need a clear behavior:
 
     - **strict**: Raise an error — refuse to patch untested versions.
@@ -355,7 +355,7 @@ class CompatibilityPolicy:
             )
         elif policy == cls.WARN:
             warnings.warn(
-                f"PyTorch {current_str} has not been tested with ascend-compat "
+                f"PyTorch {current_str} has not been tested with cuda-morph "
                 f"(latest tested: {tested_str}). Patches for {tested_str} will be "
                 f"applied. Set ASCEND_COMPAT_COMPAT_POLICY=silent to suppress.",
                 FutureWarning,

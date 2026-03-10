@@ -16,7 +16,7 @@ Usage::
     run_all_checks()
 
     # Or via CLI:
-    # ascend-compat doctor
+    # cuda-morph doctor
 """
 
 from ascend_compat.doctor.version_check import check_versions

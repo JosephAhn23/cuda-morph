@@ -44,7 +44,7 @@ class TestVersionCheck:
         results = check_versions()
         report = format_report(results)
         assert isinstance(report, str)
-        assert "ascend-compat doctor" in report
+        assert "cuda-morph doctor" in report
 
     def test_check_result_statuses(self) -> None:
         """All statuses should be valid."""

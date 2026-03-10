@@ -72,7 +72,7 @@ def apply() -> None:
     if ds_ver and ds_ver[:2] not in _TESTED_DEEPSPEED:
         tested_strs = [f"{v[0]}.{v[1]}" for v in _TESTED_DEEPSPEED]
         warnings.warn(
-            f"DeepSpeed {ds_ver[0]}.{ds_ver[1]} has not been tested with ascend-compat. "
+            f"DeepSpeed {ds_ver[0]}.{ds_ver[1]} has not been tested with cuda-morph. "
             f"Tested: {', '.join(tested_strs)}. Patches may not work correctly.",
             FutureWarning,
             stacklevel=2,

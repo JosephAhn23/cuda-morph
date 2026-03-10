@@ -134,7 +134,7 @@ def _check_os() -> EnvCheckResult:
         return EnvCheckResult("OS", "info",
                               f"Windows {release} — development only",
                               detail="Ascend NPU drivers are Linux-only. "
-                                     "ascend-compat can be developed/tested on Windows "
+                                     "cuda-morph can be developed/tested on Windows "
                                      "but NPU features require Linux.")
 
     return EnvCheckResult("OS", "warning",
@@ -410,7 +410,7 @@ def _check_torch_npu_installation() -> EnvCheckResult:
     except Exception as exc:  # noqa: BLE001
         return EnvCheckResult("torch_npu", "error",
                               f"torch_npu import failed: {exc}",
-                              fix="Check CANN/driver versions. Run: ascend-compat doctor")
+                              fix="Check CANN/driver versions. Run: cuda-morph doctor")
 
 
 def _check_hccl_readiness() -> List[EnvCheckResult]:
@@ -476,7 +476,7 @@ def format_env_report(results: List[EnvCheckResult]) -> str:
     """Format environment check results as a comprehensive report."""
     icons = {"ok": "[OK]", "warning": "[!!]", "error": "[XX]", "info": "[ii]"}
     lines = [
-        "ascend-compat doctor — full environment check",
+        "cuda-morph doctor — full environment check",
         "=" * 60,
     ]
 

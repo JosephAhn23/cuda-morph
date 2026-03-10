@@ -21,7 +21,7 @@ body:
     id: description
     attributes:
       label: Feature Description
-      description: What should ascend-compat do?
+      description: What should cuda-morph do?
     validations:
       required: true
 

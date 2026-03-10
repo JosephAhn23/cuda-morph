@@ -18,7 +18,7 @@ can be replaced with::
 
     from ascend_compat.ecosystem.flash_attn import flash_attn_func
 
-or, more powerfully, ascend-compat can register itself as a ``flash_attn``
+or, more powerfully, cuda-morph can register itself as a ``flash_attn``
 package via the import hook so existing code doesn't need any changes.
 
 API Mapping

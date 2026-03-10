@@ -1,4 +1,4 @@
-"""Shared test fixtures for ascend-compat.
+"""Shared test fixtures for cuda-morph.
 
 These fixtures create isolated test environments that simulate different
 hardware configurations (CPU-only, CUDA, NPU) without requiring actual

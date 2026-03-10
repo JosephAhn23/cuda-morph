@@ -224,7 +224,7 @@ def _resolve_dtype(dtype: Any) -> Any:
     elif _active_policy == DTypePolicy.WARN:
         import warnings
         warnings.warn(
-            f"ascend-compat: Substituting torch.{dtype_name} → torch.{substitute} "
+            f"cuda-morph: Substituting torch.{dtype_name} → torch.{substitute} "
             f"(unsupported on Ascend NPU)",
             UserWarning,
             stacklevel=4,

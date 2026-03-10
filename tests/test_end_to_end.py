@@ -28,7 +28,7 @@ class TestUserWorkflow:
     """Simulate what a real user does."""
 
     def test_minimal_workflow(self):
-        """The smallest possible ascend-compat usage."""
+        """The smallest possible cuda-morph usage."""
         import ascend_compat
 
         ascend_compat.activate()
@@ -76,7 +76,7 @@ class TestCLISmoke:
     """Verify CLI commands don't crash against real torch."""
 
     def test_info_command(self):
-        """ascend-compat info should produce output."""
+        """cuda-morph info should produce output."""
         from ascend_compat.cli import show_info
 
         info = show_info()
@@ -84,7 +84,7 @@ class TestCLISmoke:
         assert "cuda-morph" in info
 
     def test_check_command_on_self(self):
-        """ascend-compat check should work on a real Python file."""
+        """cuda-morph check should work on a real Python file."""
         from ascend_compat.cli import check_file
         import ascend_compat
 
@@ -95,7 +95,7 @@ class TestCLISmoke:
             assert report.total_cuda_refs >= 0  # Might have zero refs
 
     def test_compile_info(self):
-        """ascend-compat compile info should return valid data."""
+        """cuda-morph compile info should return valid data."""
         from ascend_compat.cuda_shim.compile_helpers import get_compile_info
 
         info = get_compile_info()
@@ -103,7 +103,7 @@ class TestCLISmoke:
         assert isinstance(info["recommended_backend"], str)
 
     def test_doctor_version_check(self):
-        """ascend-compat doctor should not crash."""
+        """cuda-morph doctor should not crash."""
         from ascend_compat.doctor.version_check import check_versions
 
         results = check_versions()

@@ -2,11 +2,11 @@
 """Example: HuggingFace Transformers inference on Ascend NPU.
 
 This script demonstrates running a HuggingFace model on Ascend NPU
-using ascend-compat.  The ONLY change vs. standard CUDA code is the
+using cuda-morph.  The ONLY change vs. standard CUDA code is the
 two-line activation block at the top.
 
 Requirements:
-    pip install torch transformers ascend-compat
+    pip install torch transformers cuda-morph
     pip install torch-npu  # From Huawei's repository
 
 On CPU (for testing without hardware):
@@ -14,7 +14,7 @@ On CPU (for testing without hardware):
     # Runs in CPU fallback mode — same code paths, just slower.
 
 On Ascend NPU:
-    ascend-compat run examples/huggingface_inference.py
+    cuda-morph run examples/huggingface_inference.py
     # Or: ASCEND_COMPAT_AUTO_ACTIVATE=1 python examples/huggingface_inference.py
 """
 
@@ -38,7 +38,7 @@ MAX_NEW_TOKENS = 50
 
 if torch.cuda.is_available():
     # On CUDA systems, this works normally.
-    # On Ascend with ascend-compat active, torch.cuda.is_available() returns
+    # On Ascend with cuda-morph active, torch.cuda.is_available() returns
     # False (intentionally — prevents NCCL/HCCL misdetection).
     device = torch.device("cuda")
 elif hasattr(torch, "npu") and torch.npu.is_available():
@@ -47,8 +47,8 @@ else:
     device = torch.device("cpu")
 
 print(f"Using device: {device}")
-print(f"ascend-compat active: {ascend_compat.is_activated()}")
-print(f"ascend-compat version: {ascend_compat.__version__}")
+print(f"cuda-morph active: {ascend_compat.is_activated()}")
+print(f"cuda-morph version: {ascend_compat.__version__}")
 
 # --------------------------------------------------------------------------
 # Load model and tokenizer

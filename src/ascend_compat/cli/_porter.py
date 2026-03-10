@@ -1,4 +1,4 @@
-"""Auto-add ascend-compat shim activation to CUDA files. Used by cuda-morph port."""
+"""Auto-add cuda-morph shim activation to CUDA files. Used by cuda-morph port."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ from pathlib import Path
 
 
 def port_file(file_path: str, dry_run: bool = False) -> str:
-    """Add ascend-compat shim activation to a CUDA-dependent Python file.
+    """Add cuda-morph shim activation to a CUDA-dependent Python file.
 
     The shim approach: rather than rewriting individual ``torch.cuda.*``
     calls (which would require AST-level rewriting to be safe), we add

@@ -42,7 +42,7 @@ class CheckReport:
         """Return a human-readable summary of the report."""
         lines = [
             f"╔══════════════════════════════════════════════════════════════╗",
-            f"║  ascend-compat migration check: {Path(self.file_path).name:<28}║",
+            f"║  cuda-morph migration check: {Path(self.file_path).name:<28}║",
             f"╠══════════════════════════════════════════════════════════════╣",
             f"║  Total CUDA references:  {self.total_cuda_refs:<34}║",
             f"║  Migration difficulty:   {self.migration_difficulty:<34}║",
@@ -56,7 +56,7 @@ class CheckReport:
 
         status_labels = {
             "transparent": "✅ Transparent (work as-is)",
-            "needs_wrapper": "🔄 Needs wrapper (ascend-compat handles)",
+            "needs_wrapper": "🔄 Needs wrapper (cuda-morph handles)",
             "unsupported": "❌ Unsupported (manual rewrite needed)",
             "unknown": "❓ Unknown (test on Ascend hardware)",
         }

@@ -3,14 +3,14 @@ requires = ["setuptools>=68.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "ascend-compat"
-version = "0.9.0"
+name = "cuda-morph"
+version = "0.9.1"
 description = "CUDA-to-Ascend ecosystem compatibility bridge — fixes the last mile between torch_npu and your existing CUDA code"
 readme = "README.md"
 license = {text = "Apache-2.0"}
 requires-python = ">=3.8"
 authors = [
-    {name = "ascend-compat contributors"},
+    {name = "cuda-morph contributors"},
 ]
 keywords = ["pytorch", "cuda", "ascend", "npu", "cann", "huawei", "compatibility", "shim"]
 classifiers = [
@@ -51,8 +51,8 @@ docs = [
 ]
 
 [project.scripts]
-ascend-compat = "ascend_compat.cli:main"
 cuda-morph = "ascend_compat.cli:main"
+ascend-compat = "ascend_compat.cli:main"
 
 [project.urls]
 Homepage = "https://github.com/JosephAhn23/cuda-morph"

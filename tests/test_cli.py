@@ -255,7 +255,7 @@ torch.cuda.is_available()
             report = check_file(path)
             summary = report.summary()
             assert isinstance(summary, str)
-            assert "ascend-compat" in summary
+            assert "cuda-morph" in summary
         finally:
             os.unlink(path)
 
@@ -393,7 +393,7 @@ torch.cuda.is_available()
         try:
             result = _runner.invoke(main, ["check", path])
             assert result.exit_code == 0
-            assert "ascend-compat" in result.output
+            assert "cuda-morph" in result.output
         finally:
             os.unlink(path)
 
@@ -429,7 +429,7 @@ torch.cuda.is_available()
     def test_doctor_command(self) -> None:
         result = _runner.invoke(main, ["doctor"])
         assert result.exit_code == 0
-        assert "ascend-compat doctor" in result.output
+        assert "cuda-morph doctor" in result.output
 
     def test_error_command_known_code(self) -> None:
         result = _runner.invoke(main, ["error", "507035"])
