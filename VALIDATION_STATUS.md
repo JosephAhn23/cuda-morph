@@ -19,7 +19,9 @@ Observed output:
 This proves the shim can route `.cuda()` calls correctly on non-NVIDIA hardware
 for the validated matmul path.
 
-> Evidence screenshot is included in the project discussion/release notes for this run.
+![AMD ROCm `.cuda()` proof screenshot](assets/amd-rocm-cuda-proof.png)
+
+> Evidence screenshot captured from the validating RunPod AMD MI300X session.
 
 ---
 
