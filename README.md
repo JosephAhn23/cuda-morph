@@ -113,14 +113,4 @@ pytest tests/ -v --run-hardware
 ```
 
 ---
-
-## See also
-
-- [STRATEGY.md](STRATEGY.md)
-- [VALIDATION_STATUS.md](VALIDATION_STATUS.md)
-- [MIGRATION.md](MIGRATION.md)
-- [docs/README_zh.md](docs/README_zh.md)
-
-## License
-
-Apache 2.0
+ 
