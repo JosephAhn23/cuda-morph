@@ -127,6 +127,14 @@ from ascend_compat.cuda_shim import (
     is_activated,
     reset_patch_stats,
 )
+from ascend_compat.cuda_shim.morphos_backend import register_morphos_backend
+
+# Registering the "morphos" torch.compile backend name is *not* the same
+# kind of side effect as activate() — it doesn't touch torch.cuda or patch
+# anything that existing code might depend on, it only makes the string
+# "morphos" resolvable by torch.compile(..., backend="morphos"). So unlike
+# activate(), this runs unconditionally on import.
+register_morphos_backend()
 
 
 def _check_activation_at_exit() -> None:
