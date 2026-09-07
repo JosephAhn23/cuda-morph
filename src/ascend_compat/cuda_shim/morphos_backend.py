@@ -162,17 +162,26 @@ def register_morphos_backend() -> None:
     does not patch ``torch.cuda`` or anything else, it only makes the
     string ``"morphos"`` resolvable by ``torch.compile``. Safe to call at
     package import time.
+
+    Deliberately only touches ``torch._dynamo``'s stable public surface
+    (``list_backends`` / ``register_backend``) — the internal registry
+    dict this used to check directly is not stable across PyTorch
+    versions and silently isn't importable on some of them.
     """
     global _registered
     if _registered:
         return
 
     try:
-        from torch._dynamo.backends.registry import _COMPILER_FNS, register_backend
+        import torch._dynamo as dynamo
+        from torch._dynamo.backends.registry import register_backend
     except ImportError:
-        logger.debug("torch._dynamo.backends.registry unavailable — skipping morphos registration")
+        logger.debug("torch._dynamo unavailable — skipping morphos registration")
         return
 
-    if "morphos" not in _COMPILER_FNS:
-        register_backend(compiler_fn=morphos_backend, name="morphos")
+    if "morphos" not in dynamo.list_backends():
+        try:
+            register_backend(compiler_fn=morphos_backend, name="morphos")
+        except AssertionError:
+            pass  # Registered concurrently (e.g. a module reload) — fine.
     _registered = True
