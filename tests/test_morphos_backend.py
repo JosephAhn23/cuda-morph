@@ -2,11 +2,20 @@
 
 from __future__ import annotations
 
+import pytest
 import torch
 
 # Importing the submodule below runs ascend_compat/__init__.py first (Python
 # always initializes parent packages), which is what registers "morphos".
 from ascend_compat.cuda_shim import morphos_backend
+
+# Some PyTorch versions (e.g. 2.2.0) never supported Dynamo/torch.compile on
+# newer Pythons (e.g. 3.12+) at all — that's an upstream limitation of that
+# specific combination, not something morphos can work around.
+pytestmark = pytest.mark.skipif(
+    not torch._dynamo.is_dynamo_supported(),
+    reason="torch.compile/Dynamo is not supported on this Python + PyTorch combination",
+)
 
 
 class TestRegistration:

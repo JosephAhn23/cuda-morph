@@ -44,6 +44,9 @@ dev = [
     "pytest-mock>=3.10",
     "mypy>=1.0",
     "ruff>=0.1.0",
+    # torch.compile's Dynamo needs numpy internally on some PyTorch
+    # versions even when the code under test never imports it directly.
+    "numpy",
 ]
 docs = [
     "mkdocs>=1.5",
