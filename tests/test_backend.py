@@ -2,12 +2,8 @@
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
-
 from ascend_compat._backend import (
     Backend,
-    detect_backends,
-    has_cuda,
     has_npu,
     preferred_backend,
     translate_device_string,

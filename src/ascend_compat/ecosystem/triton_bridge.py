@@ -30,10 +30,8 @@ Usage::
 from __future__ import annotations
 
 import os
-import sys
-from typing import Any, Dict, Optional
+from typing import Any
 
-from ascend_compat._backend import has_npu
 from ascend_compat._logging import get_logger
 
 logger = get_logger(__name__)
@@ -42,7 +40,8 @@ logger = get_logger(__name__)
 def is_triton_available() -> bool:
     """Check if any version of Triton is installed."""
     try:
-        import triton  # type: ignore[import-untyped]
+        import triton  # type: ignore[import-untyped]  # noqa: F401
+
         return True
     except ImportError:
         return False
@@ -60,6 +59,7 @@ def is_triton_ascend_available() -> bool:
 
     try:
         import triton  # type: ignore[import-untyped]
+
         # Check for Ascend backend registration
         if hasattr(triton, "backends"):
             backends = triton.backends
@@ -68,6 +68,7 @@ def is_triton_ascend_available() -> bool:
 
         # Alternative: check for triton_ascend package
         import triton_ascend  # type: ignore[import-untyped]  # noqa: F401
+
         return True
     except (ImportError, AttributeError):
         pass
@@ -75,9 +76,9 @@ def is_triton_ascend_available() -> bool:
     return False
 
 
-def get_triton_info() -> Dict[str, Any]:
+def get_triton_info() -> dict[str, Any]:
     """Return information about Triton installation and backends."""
-    info: Dict[str, Any] = {
+    info: dict[str, Any] = {
         "triton_installed": False,
         "triton_version": None,
         "ascend_backend": False,
@@ -86,6 +87,7 @@ def get_triton_info() -> Dict[str, Any]:
 
     try:
         import triton  # type: ignore[import-untyped]
+
         info["triton_installed"] = True
         info["triton_version"] = getattr(triton, "__version__", "unknown")
 

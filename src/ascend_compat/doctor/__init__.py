@@ -19,15 +19,15 @@ Usage::
     # cuda-morph doctor
 """
 
-from ascend_compat.doctor.version_check import check_versions
+from ascend_compat.doctor.env_setup import full_environment_check
 from ascend_compat.doctor.error_codes import translate_error
 from ascend_compat.doctor.fallback_monitor import FallbackMonitor
 from ascend_compat.doctor.op_auditor import audit_model
-from ascend_compat.doctor.env_setup import full_environment_check
 from ascend_compat.doctor.security_check import (
     full_security_check,
     verify_torch_npu_integrity,
 )
+from ascend_compat.doctor.version_check import check_versions
 
 __all__ = [
     "check_versions",

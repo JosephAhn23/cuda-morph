@@ -16,7 +16,7 @@ import importlib.abc
 import importlib.machinery
 import sys
 from types import ModuleType
-from typing import Any, Optional, Sequence
+from typing import Any, Sequence
 
 from ascend_compat._logging import get_logger
 
@@ -28,7 +28,7 @@ _hook_installed = False
 class _FlashAttnLoader(importlib.abc.Loader):
     """Loader that returns our flash_attn shim module."""
 
-    def create_module(self, spec: Any) -> Optional[ModuleType]:
+    def create_module(self, spec: Any) -> ModuleType | None:
         """Return None to let Python create a default module object."""
         return None
 
@@ -55,8 +55,8 @@ class _FlashAttnFinder(importlib.abc.MetaPathFinder):
         self._loader = _FlashAttnLoader()
 
     def find_module(
-        self, fullname: str, path: Optional[Sequence[str]] = None
-    ) -> Optional[importlib.abc.Loader]:
+        self, fullname: str, path: Sequence[str] | None = None
+    ) -> importlib.abc.Loader | None:
         """Legacy find_module for older Python compat."""
         spec = self.find_spec(fullname, path)
         if spec is not None:
@@ -66,9 +66,9 @@ class _FlashAttnFinder(importlib.abc.MetaPathFinder):
     def find_spec(
         self,
         fullname: str,
-        path: Optional[Sequence[str]],
-        target: Optional[ModuleType] = None,
-    ) -> Optional[importlib.machinery.ModuleSpec]:
+        path: Sequence[str] | None,
+        target: ModuleType | None = None,
+    ) -> importlib.machinery.ModuleSpec | None:
         """Called by Python's import system to find a module."""
         # Only intercept flash_attn and submodules
         if fullname != "flash_attn" and not fullname.startswith("flash_attn."):
@@ -121,7 +121,6 @@ def uninstall_flash_attn_hook() -> None:
     _hook_installed = False
 
     # Clean up sys.modules entries we created
-    from ascend_compat.ecosystem import flash_attn as fa_shim
 
     for key in list(sys.modules):
         if key == "flash_attn" or key.startswith("flash_attn."):

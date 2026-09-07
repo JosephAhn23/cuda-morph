@@ -2,20 +2,22 @@
 
 from __future__ import annotations
 
-from typing import Optional
-
 import click
 
 
 @click.command()
 @click.argument("name")
-@click.option("--pattern", default="elementwise",
-              type=click.Choice(["elementwise", "reduction", "matmul", "custom"]),
-              help="Computation pattern")
+@click.option(
+    "--pattern",
+    default="elementwise",
+    type=click.Choice(["elementwise", "reduction", "matmul", "custom"]),
+    help="Computation pattern",
+)
 @click.option("--output", "-o", default=None, help="Output directory")
-def scaffold(name: str, pattern: str, output: Optional[str]) -> None:
+def scaffold(name: str, pattern: str, output: str | None) -> None:
     """Generate Ascend C operator project from a template."""
-    from ascend_compat.kernel_helper import OpSpec, scaffold as do_scaffold
+    from ascend_compat.kernel_helper import OpSpec
+    from ascend_compat.kernel_helper import scaffold as do_scaffold
 
     output_dir = output or f"./{name.lower()}_op"
     spec = OpSpec(

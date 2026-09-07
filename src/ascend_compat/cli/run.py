@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import os
 import sys
-from typing import Tuple
 
 import click
 
@@ -12,19 +11,22 @@ import click
 @click.command()
 @click.argument("script", type=click.Path(exists=True))
 @click.argument("script_args", nargs=-1, type=click.UNPROCESSED)
-def run(script: str, script_args: Tuple[str, ...]) -> None:
+def run(script: str, script_args: tuple[str, ...]) -> None:
     """Run a script with full cuda-morph shims active."""
     import runpy
 
     os.environ["ASCEND_COMPAT_AUTO_ACTIVATE"] = "1"
 
     from ascend_compat.cuda_shim import activate
+
     activate()
 
     from ascend_compat.ecosystem._flash_attn_hook import install_flash_attn_hook
+
     install_flash_attn_hook()
 
-    from ascend_compat.ecosystem import transformers_patch, deepspeed_patch, vllm_patch
+    from ascend_compat.ecosystem import deepspeed_patch, transformers_patch, vllm_patch
+
     transformers_patch.apply()
     deepspeed_patch.apply()
     vllm_patch.apply()

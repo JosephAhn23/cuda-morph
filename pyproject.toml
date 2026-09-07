@@ -86,5 +86,10 @@ line-length = 100
 select = ["E", "F", "W", "I", "N", "D", "UP"]
 ignore = ["D100", "D104"]  # Allow missing module/package docstrings at top level
 
+[tool.ruff.lint.per-file-ignores]
+# Test names are the documentation — don't require a docstring on every
+# test_* method, __init__, or magic method in tests/.
+"tests/**" = ["D101", "D102", "D103", "D105", "D107"]
+
 [tool.ruff.lint.pydocstyle]
 convention = "google"

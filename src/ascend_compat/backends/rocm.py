@@ -60,6 +60,7 @@ class ROCmBackend(BackendInfo):
         """
         try:
             import torch
+
             # ROCm builds set torch.version.hip to a version string
             # CUDA builds have torch.version.hip as None
             hip_version = getattr(torch.version, "hip", None)
@@ -74,6 +75,7 @@ class ROCmBackend(BackendInfo):
         """Return number of AMD GPUs."""
         try:
             import torch
+
             hip_version = getattr(torch.version, "hip", None)
             if hip_version is not None:
                 return torch.cuda.device_count()
@@ -86,6 +88,7 @@ class ROCmBackend(BackendInfo):
         """Return the AMD GPU model name."""
         try:
             import torch
+
             hip_version = getattr(torch.version, "hip", None)
             if hip_version is not None and torch.cuda.is_available():
                 return torch.cuda.get_device_name(index)
@@ -98,6 +101,7 @@ class ROCmBackend(BackendInfo):
         """Return the ROCm/HIP version."""
         try:
             import torch
+
             hip_version = getattr(torch.version, "hip", None)
             if hip_version is not None:
                 return f"ROCm {hip_version}"

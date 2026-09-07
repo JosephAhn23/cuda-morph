@@ -17,8 +17,8 @@ Example::
 """
 
 from ascend_compat._exceptions import (  # noqa: F401
-    AscendCompatError,
     ActivationError,
+    AscendCompatError,
     BackendNotFoundError,
     CompatibilityError,
     CudaMorphError,

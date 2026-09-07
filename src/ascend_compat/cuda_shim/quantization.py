@@ -35,7 +35,6 @@ Usage::
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional
 
 from ascend_compat._logging import get_logger
 
@@ -46,18 +45,18 @@ logger = get_logger(__name__)
 class QuantCompat:
     """Quantization compatibility result."""
 
-    method: str               # Detected quantization method
-    supported: bool           # Whether it works on current Ascend hardware
+    method: str  # Detected quantization method
+    supported: bool  # Whether it works on current Ascend hardware
     native_performance: bool  # Whether it runs at native speed (vs emulated)
-    suggestion: str           # Migration guidance
-    alternative: str = ""     # Recommended alternative method
+    suggestion: str  # Migration guidance
+    alternative: str = ""  # Recommended alternative method
 
 
 # ---------------------------------------------------------------------------
 # Compatibility database
 # ---------------------------------------------------------------------------
 
-_QUANT_COMPAT: Dict[str, QuantCompat] = {
+_QUANT_COMPAT: dict[str, QuantCompat] = {
     "fp8": QuantCompat(
         method="fp8",
         supported=False,
@@ -185,7 +184,8 @@ def check_quant_method(method: str) -> QuantCompat:
         if not compat.supported:
             logger.warning(
                 "Quantization method '%s' is not supported on Ascend NPU. %s",
-                method, compat.suggestion.split("\n")[0],
+                method,
+                compat.suggestion.split("\n")[0],
             )
         return compat
 
@@ -221,8 +221,8 @@ def check_model_quant(model_name_or_path: str) -> QuantCompat:
 
 def _detect_quant_method(model_name_or_path: str) -> str:
     """Detect quantization method from model name or config."""
-    import os
     import json
+    import os
 
     # Try to read config.json locally
     config_path = os.path.join(model_name_or_path, "config.json")
@@ -235,7 +235,7 @@ def _detect_quant_method(model_name_or_path: str) -> str:
                 method = quant_config.get("quant_method", "")
                 if method:
                     return method
-        except (json.JSONDecodeError, IOError):
+        except (OSError, json.JSONDecodeError):
             pass
 
     # Heuristic from model name
@@ -255,12 +255,12 @@ def _detect_quant_method(model_name_or_path: str) -> str:
     return "none"
 
 
-def get_supported_methods() -> List[str]:
+def get_supported_methods() -> list[str]:
     """Return list of quantization methods supported on current Ascend hardware."""
     return [k for k, v in _QUANT_COMPAT.items() if v.supported]
 
 
-def get_unsupported_methods() -> List[str]:
+def get_unsupported_methods() -> list[str]:
     """Return list of unsupported quantization methods."""
     return [k for k, v in _QUANT_COMPAT.items() if not v.supported]
 

@@ -6,7 +6,7 @@ all C++/CANN integration is handled by torch_npu's PrivateUse1 backend.
 
 Architecture:
     _registry.py      — Version-aware mapping of torch.cuda attrs → torch.npu
-    _import_hook.py   — sys.meta_path interceptor for `import torch.cuda` 
+    _import_hook.py   — sys.meta_path interceptor for `import torch.cuda`
     _monkey_patch.py  — Runtime patching of torch.cuda, torch.device, Tensor.cuda()
 
 Critical design decision:

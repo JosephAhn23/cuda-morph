@@ -37,9 +37,8 @@ from __future__ import annotations
 
 import time
 import warnings
-from collections import defaultdict
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from ascend_compat._logging import get_logger
 
@@ -50,10 +49,10 @@ logger = get_logger(__name__)
 class FallbackEvent:
     """Record of a single CPU fallback event."""
 
-    op_name: str                # e.g. "aten::_unique2"
-    timestamp: float            # time.monotonic()
-    input_shapes: List[str] = field(default_factory=list)
-    input_dtypes: List[str] = field(default_factory=list)
+    op_name: str  # e.g. "aten::_unique2"
+    timestamp: float  # time.monotonic()
+    input_shapes: list[str] = field(default_factory=list)
+    input_dtypes: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -62,10 +61,10 @@ class FallbackStats:
 
     op_name: str
     call_count: int = 0
-    total_time_ms: float = 0.0      # Estimated time in milliseconds
+    total_time_ms: float = 0.0  # Estimated time in milliseconds
     first_seen: float = 0.0
     last_seen: float = 0.0
-    sample_shapes: List[str] = field(default_factory=list)
+    sample_shapes: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -75,7 +74,7 @@ class FallbackReport:
     total_fallbacks: int = 0
     unique_ops: int = 0
     monitoring_duration_s: float = 0.0
-    stats: Dict[str, FallbackStats] = field(default_factory=dict)
+    stats: dict[str, FallbackStats] = field(default_factory=dict)
 
     def summary(self) -> str:
         """Human-readable summary."""
@@ -93,9 +92,7 @@ class FallbackReport:
         ]
 
         # Sort by call count (most frequent first)
-        sorted_stats = sorted(
-            self.stats.values(), key=lambda s: s.call_count, reverse=True
-        )
+        sorted_stats = sorted(self.stats.values(), key=lambda s: s.call_count, reverse=True)
 
         for stat in sorted_stats[:20]:  # Top 20
             shapes_info = f" (shapes: {stat.sample_shapes[0]})" if stat.sample_shapes else ""
@@ -117,12 +114,8 @@ class FallbackReport:
                 "consider rewriting these with NPU-native alternatives"
             )
 
-        lines.append(
-            "  - Update CANN to the latest version for broader op coverage"
-        )
-        lines.append(
-            "  - Run `cuda-morph check your_script.py` to identify CUDA-specific code"
-        )
+        lines.append("  - Update CANN to the latest version for broader op coverage")
+        lines.append("  - Run `cuda-morph check your_script.py` to identify CUDA-specific code")
 
         return "\n".join(lines)
 
@@ -146,7 +139,8 @@ class FallbackMonitor:
     """
 
     def __init__(self) -> None:
-        self._events: List[FallbackEvent] = []
+        """Create an empty monitor, not yet started."""
+        self._events: list[FallbackEvent] = []
         self._start_time: float = 0.0
         self._stop_time: float = 0.0
         self._original_showwarning: Any = None
@@ -166,8 +160,12 @@ class FallbackMonitor:
         self._original_showwarning = warnings.showwarning
 
         def _intercept_warning(
-            message: Any, category: type, filename: str,
-            lineno: int, file: Any = None, line: str = None,
+            message: Any,
+            category: type,
+            filename: str,
+            lineno: int,
+            file: Any = None,
+            line: str = None,
         ) -> None:
             msg_str = str(message)
             if "fall back" in msg_str.lower() and ("cpu" in msg_str.lower() or "CPU" in msg_str):
@@ -175,10 +173,12 @@ class FallbackMonitor:
                 # Typical format: "The operator 'aten::xxx' is not currently supported
                 # on the NPU backend and will fall back to run on the CPU"
                 op_name = _extract_op_name(msg_str)
-                self._events.append(FallbackEvent(
-                    op_name=op_name,
-                    timestamp=time.monotonic(),
-                ))
+                self._events.append(
+                    FallbackEvent(
+                        op_name=op_name,
+                        timestamp=time.monotonic(),
+                    )
+                )
                 logger.warning("CPU fallback detected: %s", op_name)
 
             # Still show the original warning
@@ -219,11 +219,13 @@ class FallbackMonitor:
 
         return self.report
 
-    def __enter__(self) -> "FallbackMonitor":
+    def __enter__(self) -> FallbackMonitor:
+        """Start monitoring on entering the ``with`` block."""
         self.start()
         return self
 
     def __exit__(self, *args: Any) -> None:
+        """Stop monitoring on exiting the ``with`` block."""
         self.stop()
 
 
@@ -250,9 +252,9 @@ def _extract_op_name(warning_msg: str) -> str:
     return warning_msg[:80].strip()
 
 
-def _compile_report(events: List[FallbackEvent], duration: float) -> FallbackReport:
+def _compile_report(events: list[FallbackEvent], duration: float) -> FallbackReport:
     """Compile events into an aggregated report."""
-    stats: Dict[str, FallbackStats] = {}
+    stats: dict[str, FallbackStats] = {}
 
     for event in events:
         if event.op_name not in stats:

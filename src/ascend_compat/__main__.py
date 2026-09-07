@@ -22,11 +22,11 @@ The ``run`` subcommand is the primary addition here.  It:
 
 from __future__ import annotations
 
-import sys
-
 
 def main() -> None:
+    """Delegate to the ``ascend_compat.cli`` entry point."""
     from ascend_compat.cli import main as cli_main
+
     cli_main()
 
 

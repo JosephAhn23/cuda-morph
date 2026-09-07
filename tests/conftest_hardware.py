@@ -30,9 +30,7 @@ def pytest_addoption(parser: pytest.Parser) -> None:
     )
 
 
-def pytest_collection_modifyitems(
-    config: pytest.Config, items: list[pytest.Item]
-) -> None:
+def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:
     """Auto-skip hardware tests when --run-hardware is not set."""
     if config.getoption("--run-hardware"):
         return  # User asked for hardware tests — don't skip

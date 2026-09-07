@@ -19,20 +19,18 @@ backend to know:
 
 from __future__ import annotations
 
-from typing import Dict, Type
-
-from ascend_compat.backends.registry import BackendInfo
 from ascend_compat.backends.ascend import AscendBackend
 from ascend_compat.backends.cambricon import CambriconBackend
-from ascend_compat.backends.rocm import ROCmBackend
 from ascend_compat.backends.intel import IntelBackend
+from ascend_compat.backends.registry import BackendInfo
+from ascend_compat.backends.rocm import ROCmBackend
 
 # All known backends, keyed by their short name.
 # Detection priority follows insertion order:
 #   1. Domestic Chinese backends (most likely to need shim)
 #   2. Global alternatives (AMD, Intel)
 # NVIDIA CUDA and CPU are handled directly by _backend.py, not here.
-BACKEND_REGISTRY: Dict[str, Type[BackendInfo]] = {
+BACKEND_REGISTRY: dict[str, type[BackendInfo]] = {
     "ascend": AscendBackend,
     "cambricon": CambriconBackend,
     "rocm": ROCmBackend,

@@ -27,7 +27,6 @@ from __future__ import annotations
 import platform
 import sys
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Tuple
 
 from ascend_compat._logging import get_logger
 
@@ -37,6 +36,7 @@ logger = get_logger(__name__)
 @dataclass
 class VersionInfo:
     """Detected component versions."""
+
     python: str = ""
     pytorch: str = ""
     torch_npu: str = ""
@@ -48,6 +48,7 @@ class VersionInfo:
 @dataclass
 class CheckResult:
     """Result of a single compatibility check."""
+
     name: str
     status: str  # "ok", "warning", "error", "skipped"
     message: str
@@ -55,7 +56,7 @@ class CheckResult:
 
 
 # Known-good version combinations: (torch_npu_prefix, pytorch_prefix, cann_prefix)
-_COMPAT_MATRIX: List[Tuple[str, str, str]] = [
+_COMPAT_MATRIX: list[tuple[str, str, str]] = [
     ("2.5", "2.5", "8.0"),
     ("2.4", "2.4", "8.0"),
     ("2.3", "2.3", "8.0"),
@@ -65,13 +66,13 @@ _COMPAT_MATRIX: List[Tuple[str, str, str]] = [
 ]
 
 
-def check_versions() -> List[CheckResult]:
+def check_versions() -> list[CheckResult]:
     """Run all version compatibility checks.
 
     Returns:
         List of :class:`CheckResult` items.
     """
-    results: List[CheckResult] = []
+    results: list[CheckResult] = []
     info = _detect_versions()
 
     # 1. Python version
@@ -122,13 +123,14 @@ def _detect_versions() -> VersionInfo:
 
     # CANN version (from environment or torch_npu)
     import os
+
     cann_home = os.environ.get("ASCEND_HOME_PATH", "")
     if cann_home:
         version_file = os.path.join(cann_home, "version.info")
         try:
             with open(version_file) as f:
                 info.cann = f.read().strip()
-        except (OSError, IOError):
+        except OSError:
             pass
 
     if not info.cann and npu is not None:
@@ -144,11 +146,11 @@ def _detect_versions() -> VersionInfo:
 def _check_python(info: VersionInfo) -> CheckResult:
     major, minor = sys.version_info.major, sys.version_info.minor
     if major != 3 or minor < 8:
-        return CheckResult("Python", "error",
-                           f"Python {info.python} — requires 3.8+")
+        return CheckResult("Python", "error", f"Python {info.python} — requires 3.8+")
     if minor > 12:
-        return CheckResult("Python", "warning",
-                           f"Python {info.python} — may not be tested with torch_npu")
+        return CheckResult(
+            "Python", "warning", f"Python {info.python} — may not be tested with torch_npu"
+        )
     return CheckResult("Python", "ok", f"Python {info.python}")
 
 
@@ -157,24 +159,27 @@ def _check_pytorch(info: VersionInfo) -> CheckResult:
         return CheckResult("PyTorch", "error", "PyTorch is not installed")
     major_minor = ".".join(info.pytorch.split(".")[:2])
     if float(major_minor) < 2.0:
-        return CheckResult("PyTorch", "error",
-                           f"PyTorch {info.pytorch} — requires 2.0+")
+        return CheckResult("PyTorch", "error", f"PyTorch {info.pytorch} — requires 2.0+")
     return CheckResult("PyTorch", "ok", f"PyTorch {info.pytorch}")
 
 
 def _check_torch_npu(info: VersionInfo) -> CheckResult:
     if not info.torch_npu:
-        return CheckResult("torch_npu", "warning",
-                           "torch_npu not installed — NPU support unavailable",
-                           detail="Install: pip install torch-npu (from Huawei's repo)")
+        return CheckResult(
+            "torch_npu",
+            "warning",
+            "torch_npu not installed — NPU support unavailable",
+            detail="Install: pip install torch-npu (from Huawei's repo)",
+        )
     return CheckResult("torch_npu", "ok", f"torch_npu {info.torch_npu}")
 
 
 def _check_cann(info: VersionInfo) -> CheckResult:
     if not info.cann:
         if info.torch_npu:
-            return CheckResult("CANN", "warning",
-                               "CANN version not detected — set ASCEND_HOME_PATH")
+            return CheckResult(
+                "CANN", "warning", "CANN version not detected — set ASCEND_HOME_PATH"
+            )
         return CheckResult("CANN", "skipped", "CANN check skipped (no torch_npu)")
     return CheckResult("CANN", "ok", f"CANN {info.cann}")
 
@@ -182,8 +187,7 @@ def _check_cann(info: VersionInfo) -> CheckResult:
 def _check_cross_compat(info: VersionInfo) -> CheckResult:
     """Check that torch_npu and PyTorch versions are compatible."""
     if not info.torch_npu or not info.pytorch:
-        return CheckResult("Compatibility", "skipped",
-                           "Cannot check — missing version info")
+        return CheckResult("Compatibility", "skipped", "Cannot check — missing version info")
 
     npu_mm = ".".join(info.torch_npu.split(".")[:2])
     pt_mm = ".".join(info.pytorch.split(".")[:2])
@@ -194,19 +198,28 @@ def _check_cross_compat(info: VersionInfo) -> CheckResult:
             if info.cann:
                 cann_mm = ".".join(info.cann.split(".")[:2])
                 if not cann_mm.startswith(cann_prefix):
-                    return CheckResult("Compatibility", "warning",
-                                       f"CANN {info.cann} may not match torch_npu {info.torch_npu} "
-                                       f"(expected CANN {cann_prefix}.*)")
+                    return CheckResult(
+                        "Compatibility",
+                        "warning",
+                        f"CANN {info.cann} may not match torch_npu {info.torch_npu} "
+                        f"(expected CANN {cann_prefix}.*)",
+                    )
             return CheckResult("Compatibility", "ok", msg)
 
     # No match found in matrix
     if npu_mm != pt_mm:
-        return CheckResult("Compatibility", "error",
-                           f"torch_npu {info.torch_npu} and PyTorch {info.pytorch} "
-                           f"have different major.minor versions — likely incompatible")
+        return CheckResult(
+            "Compatibility",
+            "error",
+            f"torch_npu {info.torch_npu} and PyTorch {info.pytorch} "
+            f"have different major.minor versions — likely incompatible",
+        )
 
-    return CheckResult("Compatibility", "warning",
-                       f"Version combination not in known-good matrix — may work but untested")
+    return CheckResult(
+        "Compatibility",
+        "warning",
+        "Version combination not in known-good matrix — may work but untested",
+    )
 
 
 def _check_npu_device(info: VersionInfo) -> CheckResult:
@@ -216,22 +229,24 @@ def _check_npu_device(info: VersionInfo) -> CheckResult:
 
     try:
         import torch
+
         if hasattr(torch, "npu") and torch.npu.is_available():
             count = torch.npu.device_count()
             name = torch.npu.get_device_name(0) if count > 0 else "unknown"
-            return CheckResult("NPU Device", "ok",
-                               f"{count} NPU(s) available: {name}")
+            return CheckResult("NPU Device", "ok", f"{count} NPU(s) available: {name}")
         else:
-            return CheckResult("NPU Device", "error",
-                               "torch_npu installed but no NPU devices detected",
-                               detail="Check: driver installed, npu-smi works, "
-                                      "ASCEND_RT_VISIBLE_DEVICES not empty")
+            return CheckResult(
+                "NPU Device",
+                "error",
+                "torch_npu installed but no NPU devices detected",
+                detail="Check: driver installed, npu-smi works, "
+                "ASCEND_RT_VISIBLE_DEVICES not empty",
+            )
     except Exception as exc:  # noqa: BLE001
-        return CheckResult("NPU Device", "error",
-                           f"NPU device check failed: {exc}")
+        return CheckResult("NPU Device", "error", f"NPU device check failed: {exc}")
 
 
-def format_report(results: List[CheckResult]) -> str:
+def format_report(results: list[CheckResult]) -> str:
     """Format check results as a human-readable report."""
     icons = {"ok": "[OK]", "warning": "[!!]", "error": "[XX]", "skipped": "[--]"}
     lines = ["cuda-morph doctor — environment check", "=" * 50]

@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
-
 
 class TestGetCompileBackend:
     """Test compile backend detection."""
@@ -110,6 +108,7 @@ class TestShapeBucketer:
 
     def test_pad_tensor(self):
         import torch
+
         from ascend_compat.cuda_shim.compile_helpers import ShapeBucketer
 
         b = ShapeBucketer(buckets=[128, 256, 512])
@@ -125,6 +124,7 @@ class TestShapeBucketer:
 
     def test_pad_2d_tensor_dim0(self):
         import torch
+
         from ascend_compat.cuda_shim.compile_helpers import ShapeBucketer
 
         b = ShapeBucketer(buckets=[128, 256])
@@ -136,6 +136,7 @@ class TestShapeBucketer:
 
     def test_pad_2d_tensor_dim1(self):
         import torch
+
         from ascend_compat.cuda_shim.compile_helpers import ShapeBucketer
 
         b = ShapeBucketer(buckets=[128, 256])
@@ -147,6 +148,7 @@ class TestShapeBucketer:
 
     def test_pad_negative_dim(self):
         import torch
+
         from ascend_compat.cuda_shim.compile_helpers import ShapeBucketer
 
         b = ShapeBucketer(buckets=[128, 256])
@@ -157,6 +159,7 @@ class TestShapeBucketer:
 
     def test_pad_no_padding_needed(self):
         import torch
+
         from ascend_compat.cuda_shim.compile_helpers import ShapeBucketer
 
         b = ShapeBucketer(buckets=[128, 256])
@@ -186,6 +189,7 @@ class TestShapeBucketer:
     def test_3d_tensor_pad(self):
         """Verify padding works on 3D tensors (batch, seq_len, hidden)."""
         import torch
+
         from ascend_compat.cuda_shim.compile_helpers import ShapeBucketer
 
         b = ShapeBucketer(buckets=[128, 256, 512])

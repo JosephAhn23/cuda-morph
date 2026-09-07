@@ -8,9 +8,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from ascend_compat.ecosystem.flash_attn import (
-    _get_npu_fusion_attention,
     flash_attn_func,
-    flash_attn_with_kvcache,
 )
 
 
@@ -20,6 +18,7 @@ class TestFlashAttnShim:
     def test_raises_without_torch_npu(self) -> None:
         """flash_attn_func should raise RuntimeError when torch_npu is absent."""
         import torch
+
         q = torch.randn(1, 8, 4, 64)
         k = torch.randn(1, 8, 4, 64)
         v = torch.randn(1, 8, 4, 64)
@@ -36,12 +35,14 @@ class TestFlashAttnShim:
         v = torch.randn(2, 16, 4, 64)
 
         mock_output = torch.randn(2, 16, 4, 64)
-        mock_fn = MagicMock(return_value=(
-            mock_output,
-            torch.zeros(2, 4),   # softmax_max
-            torch.ones(2, 4),    # softmax_sum
-            torch.zeros(2, 4),   # softmax_out
-        ))
+        mock_fn = MagicMock(
+            return_value=(
+                mock_output,
+                torch.zeros(2, 4),  # softmax_max
+                torch.ones(2, 4),  # softmax_sum
+                torch.zeros(2, 4),  # softmax_out
+            )
+        )
 
         with patch(
             "ascend_compat.ecosystem.flash_attn._get_npu_fusion_attention",
@@ -67,10 +68,14 @@ class TestFlashAttnShim:
         k = torch.randn(1, 8, 2, 32)
         v = torch.randn(1, 8, 2, 32)
 
-        mock_fn = MagicMock(return_value=(
-            torch.randn(1, 8, 2, 32),
-            torch.zeros(1), torch.ones(1), torch.zeros(1),
-        ))
+        mock_fn = MagicMock(
+            return_value=(
+                torch.randn(1, 8, 2, 32),
+                torch.zeros(1),
+                torch.ones(1),
+                torch.zeros(1),
+            )
+        )
 
         with patch(
             "ascend_compat.ecosystem.flash_attn._get_npu_fusion_attention",
@@ -89,12 +94,14 @@ class TestFlashAttnShim:
         k = torch.randn(1, 4, 2, 32)
         v = torch.randn(1, 4, 2, 32)
 
-        mock_fn = MagicMock(return_value=(
-            torch.randn(1, 4, 2, 32),
-            torch.ones(1, 2),    # softmax_max
-            torch.ones(1, 2),    # softmax_sum
-            torch.zeros(1, 2),
-        ))
+        mock_fn = MagicMock(
+            return_value=(
+                torch.randn(1, 4, 2, 32),
+                torch.ones(1, 2),  # softmax_max
+                torch.ones(1, 2),  # softmax_sum
+                torch.zeros(1, 2),
+            )
+        )
 
         with patch(
             "ascend_compat.ecosystem.flash_attn._get_npu_fusion_attention",
@@ -108,6 +115,7 @@ class TestFlashAttnShim:
     def test_softmax_scale_default(self) -> None:
         """Default softmax_scale should be 1/sqrt(headdim)."""
         import math
+
         import torch
 
         headdim = 64
@@ -115,10 +123,14 @@ class TestFlashAttnShim:
         k = torch.randn(1, 4, 2, headdim)
         v = torch.randn(1, 4, 2, headdim)
 
-        mock_fn = MagicMock(return_value=(
-            torch.randn(1, 4, 2, headdim),
-            torch.zeros(1), torch.ones(1), torch.zeros(1),
-        ))
+        mock_fn = MagicMock(
+            return_value=(
+                torch.randn(1, 4, 2, headdim),
+                torch.zeros(1),
+                torch.ones(1),
+                torch.zeros(1),
+            )
+        )
 
         with patch(
             "ascend_compat.ecosystem.flash_attn._get_npu_fusion_attention",
@@ -142,10 +154,12 @@ class TestFlashAttnPackageRegistration:
                 del sys.modules[key]
 
         from ascend_compat.ecosystem import flash_attn as fa_shim
+
         sys.modules["flash_attn"] = fa_shim  # type: ignore[assignment]
 
         try:
             from flash_attn import flash_attn_func as imported_func  # type: ignore[import-untyped]
+
             assert imported_func is fa_shim.flash_attn_func
         finally:
             # Clean up
@@ -168,6 +182,7 @@ class TestTransformersPatch:
     def test_apply_without_npu(self) -> None:
         """apply() should be a no-op without NPU."""
         from ascend_compat.ecosystem import transformers_patch
+
         # Reset state
         transformers_patch._applied = False
 
@@ -182,8 +197,9 @@ class TestDeepSpeedPatch:
 
     def test_apply_without_deepspeed(self) -> None:
         """apply() should not crash if DeepSpeed is not installed."""
-        from ascend_compat.ecosystem.deepspeed_patch import apply
         from ascend_compat.ecosystem import deepspeed_patch
+        from ascend_compat.ecosystem.deepspeed_patch import apply
+
         deepspeed_patch._applied = False
 
         with patch("ascend_compat.ecosystem.deepspeed_patch.has_npu", return_value=True):
@@ -192,6 +208,7 @@ class TestDeepSpeedPatch:
     def test_visible_devices_mapping(self) -> None:
         """CUDA_VISIBLE_DEVICES should map to ASCEND_RT_VISIBLE_DEVICES."""
         import os
+
         from ascend_compat.ecosystem.deepspeed_patch import _patch_visible_devices_env
 
         old_cuda = os.environ.get("CUDA_VISIBLE_DEVICES")

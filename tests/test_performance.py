@@ -48,7 +48,7 @@ class TestShimOverhead:
         # Allow generous overhead factor to avoid flaky tests on CI
         assert patched < baseline * self.OVERHEAD_FACTOR, (
             f"Patched is_available() took {patched:.4f}s vs baseline {baseline:.4f}s "
-            f"({patched/baseline:.1f}x) — exceeds {self.OVERHEAD_FACTOR}x threshold"
+            f"({patched / baseline:.1f}x) — exceeds {self.OVERHEAD_FACTOR}x threshold"
         )
 
     def test_device_creation_latency(self):
@@ -67,7 +67,7 @@ class TestShimOverhead:
 
         assert patched < baseline * self.OVERHEAD_FACTOR, (
             f"Patched torch.device('cpu') took {patched:.4f}s vs baseline {baseline:.4f}s "
-            f"({patched/baseline:.1f}x) — exceeds {self.OVERHEAD_FACTOR}x threshold"
+            f"({patched / baseline:.1f}x) — exceeds {self.OVERHEAD_FACTOR}x threshold"
         )
 
     def test_tensor_creation_unaffected(self):
@@ -95,9 +95,7 @@ class TestShimOverhead:
             deactivate()
         elapsed = time.perf_counter() - start
 
-        assert elapsed < 1.0, (
-            f"50 activate/deactivate cycles took {elapsed:.2f}s — should be <1s"
-        )
+        assert elapsed < 1.0, f"50 activate/deactivate cycles took {elapsed:.2f}s — should be <1s"
 
 
 @pytest.mark.benchmark
@@ -105,8 +103,9 @@ class TestPatchManagerPerformance:
     """Verify PatchManager operations are fast."""
 
     def test_apply_revert_cycle(self):
-        """apply + revert_all for 100 patches should be fast."""
+        """Apply + revert_all for 100 patches should be fast."""
         import types
+
         from ascend_compat.cuda_shim._patch_manager import PatchManager
 
         mgr = PatchManager()
@@ -130,13 +129,16 @@ class TestPatchManagerPerformance:
 
     def test_counter_overhead(self):
         """Call counting should add negligible overhead."""
-        from ascend_compat.cuda_shim._patch_manager import PatchManager
         import types
+
+        from ascend_compat.cuda_shim._patch_manager import PatchManager
 
         mgr = PatchManager()
         mod = types.ModuleType("test_module")
 
-        original = lambda: 42
+        def original():
+            return 42
+
         setattr(mod, "fn", original)
 
         mgr.apply(mod, "fn", original, "test.fn", count_calls=True)

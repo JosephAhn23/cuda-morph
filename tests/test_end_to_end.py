@@ -16,10 +16,6 @@ No mocks.  No fakes.  If it fails here, it fails for users.
 
 from __future__ import annotations
 
-import importlib
-import subprocess
-import sys
-
 import pytest
 import torch
 
@@ -85,8 +81,8 @@ class TestCLISmoke:
 
     def test_check_command_on_self(self):
         """cuda-morph check should work on a real Python file."""
-        from ascend_compat.cli import check_file
         import ascend_compat
+        from ascend_compat.cli import check_file
 
         # Check one of our own example files or source files
         init_path = ascend_compat.__file__
@@ -123,6 +119,7 @@ class TestEcosystemPatchSafety:
     def test_transformers_patch_safe_without_transformers(self):
         """transformers_patch.apply() should not crash if transformers is missing."""
         from ascend_compat.ecosystem import transformers_patch
+
         # Reset state
         transformers_patch._applied = False
         # This should be a no-op (no NPU, or no transformers)
@@ -131,18 +128,21 @@ class TestEcosystemPatchSafety:
     def test_deepspeed_patch_safe_without_deepspeed(self):
         """deepspeed_patch.apply() should not crash if deepspeed is missing."""
         from ascend_compat.ecosystem import deepspeed_patch
+
         deepspeed_patch._applied = False
         deepspeed_patch.apply()
 
     def test_vllm_patch_safe_without_vllm(self):
         """vllm_patch.apply() should not crash if vllm is missing."""
         from ascend_compat.ecosystem import vllm_patch
+
         vllm_patch._applied = False
         vllm_patch.apply()
 
     def test_flash_attn_shim_importable(self):
         """The flash_attn shim should import without torch_npu."""
         from ascend_compat.ecosystem.flash_attn import flash_attn_func
+
         assert callable(flash_attn_func)
 
 
@@ -162,6 +162,7 @@ class TestSecurityCheckHonesty:
     def test_cann_check_without_ascend_home(self):
         """CANN library check should warn if ASCEND_HOME_PATH not set."""
         import os
+
         from ascend_compat.doctor.security_check import verify_cann_libraries
 
         old = os.environ.pop("ASCEND_HOME_PATH", None)
@@ -175,7 +176,7 @@ class TestSecurityCheckHonesty:
 
     def test_full_security_check_runs(self):
         """Full security check should complete without crashing."""
-        from ascend_compat.doctor.security_check import full_security_check, format_security_report
+        from ascend_compat.doctor.security_check import format_security_report, full_security_check
 
         results = full_security_check()
         report = format_security_report(results)
@@ -214,6 +215,7 @@ class TestBenchmarkEndToEnd:
         """CSV export should be parseable by csv.reader."""
         import csv
         import io
+
         from ascend_compat.bench import ShimOverheadBench
 
         report = ShimOverheadBench(iterations=50).run()

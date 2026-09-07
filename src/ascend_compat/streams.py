@@ -15,7 +15,7 @@ Usage::
 
 from __future__ import annotations
 
-from typing import Any, Optional
+from typing import Any
 
 from ascend_compat._logging import get_logger
 
@@ -25,10 +25,11 @@ logger = get_logger(__name__)
 def _get_backend_module() -> Any:
     """Return the torch device module for the preferred backend."""
     from ascend_compat.device import _get_backend_module
+
     return _get_backend_module()
 
 
-def synchronize(device: Optional[int] = None) -> None:
+def synchronize(device: int | None = None) -> None:
     """Wait for all operations on the current device to complete."""
     mod = _get_backend_module()
     if mod is not None and hasattr(mod, "synchronize"):
@@ -38,7 +39,7 @@ def synchronize(device: Optional[int] = None) -> None:
             mod.synchronize()
 
 
-def Stream(*args: Any, **kwargs: Any) -> Any:
+def Stream(*args: Any, **kwargs: Any) -> Any:  # noqa: N802 — mirrors torch.cuda.Stream
     """Create a device stream (routes to the backend's Stream class)."""
     mod = _get_backend_module()
     if mod is not None and hasattr(mod, "Stream"):
@@ -46,7 +47,7 @@ def Stream(*args: Any, **kwargs: Any) -> Any:
     raise RuntimeError("No accelerator backend available for stream creation")
 
 
-def Event(*args: Any, **kwargs: Any) -> Any:
+def Event(*args: Any, **kwargs: Any) -> Any:  # noqa: N802 — mirrors torch.cuda.Event
     """Create a device event (routes to the backend's Event class)."""
     mod = _get_backend_module()
     if mod is not None and hasattr(mod, "Event"):
@@ -54,7 +55,7 @@ def Event(*args: Any, **kwargs: Any) -> Any:
     raise RuntimeError("No accelerator backend available for event creation")
 
 
-def current_stream(device: Optional[int] = None) -> Any:
+def current_stream(device: int | None = None) -> Any:
     """Return the currently active stream for the given device."""
     mod = _get_backend_module()
     if mod is not None and hasattr(mod, "current_stream"):

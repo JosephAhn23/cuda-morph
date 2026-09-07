@@ -33,7 +33,7 @@ from __future__ import annotations
 
 import threading
 from collections import Counter
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable
 
 from ascend_compat._logging import get_logger
 
@@ -83,11 +83,11 @@ class PatchManager:
 
     def __init__(self) -> None:
         self._lock = threading.RLock()
-        self._patches: List[PatchRecord] = []
-        self._patch_keys: Dict[Tuple[int, str], int] = {}  # (id(module), attr) → index
+        self._patches: list[PatchRecord] = []
+        self._patch_keys: dict[tuple[int, str], int] = {}  # (id(module), attr) → index
         self._counters: Counter[str] = Counter()
         self._ref_count: int = 0
-        self._batch_start: Optional[int] = None
+        self._batch_start: int | None = None
 
     # ------------------------------------------------------------------
     # Reference counting
@@ -117,7 +117,9 @@ class PatchManager:
         """
         with self._lock:
             if self._ref_count <= 0:
-                logger.warning("PatchManager: decrement_ref called with ref_count=%d", self._ref_count)
+                logger.warning(
+                    "PatchManager: decrement_ref called with ref_count=%d", self._ref_count
+                )
                 return False
             self._ref_count -= 1
             hit_zero = self._ref_count == 0
@@ -171,7 +173,12 @@ class PatchManager:
                 if count_calls and callable(replacement):
                     replacement = self._wrap_with_counter(replacement, patch_name)
                 setattr(module, attr, replacement)
-                logger.debug("PatchManager: re-patched %s.%s (name=%s)", type(module).__name__, attr, patch_name)
+                logger.debug(
+                    "PatchManager: re-patched %s.%s (name=%s)",
+                    type(module).__name__,
+                    attr,
+                    patch_name,
+                )
                 return
 
             # First time patching this (module, attr) — store original
@@ -189,7 +196,10 @@ class PatchManager:
 
             logger.debug(
                 "PatchManager: applied %s.%s → %s (name=%s)",
-                type(module).__name__, attr, getattr(replacement, "__name__", "?"), patch_name,
+                type(module).__name__,
+                attr,
+                getattr(replacement, "__name__", "?"),
+                patch_name,
             )
 
     def _wrap_with_counter(self, fn: Callable[..., Any], patch_name: str) -> Callable[..., Any]:
@@ -212,8 +222,11 @@ class PatchManager:
     # ------------------------------------------------------------------
 
     def begin_batch(self) -> None:
-        """Mark the start of a batch.  Patches applied after this can be
-        rolled back atomically with ``rollback_batch()``."""
+        """Mark the start of a batch.
+
+        Patches applied after this can be rolled back atomically with
+        ``rollback_batch()``.
+        """
         with self._lock:
             self._batch_start = len(self._patches)
             logger.debug("PatchManager: batch started at index %d", self._batch_start)
@@ -236,7 +249,7 @@ class PatchManager:
                 logger.warning("PatchManager: rollback_batch called without begin_batch")
                 return
 
-            to_revert = self._patches[self._batch_start:]
+            to_revert = self._patches[self._batch_start :]
             for record in reversed(to_revert):
                 key = (id(record.module), record.attr)
                 if record.original is not None:
@@ -247,7 +260,7 @@ class PatchManager:
                     del self._patch_keys[key]
                 logger.debug("PatchManager: rolled back %s (batch rollback)", record.patch_name)
 
-            self._patches = self._patches[:self._batch_start]
+            self._patches = self._patches[: self._batch_start]
             self._batch_start = None
             logger.info("PatchManager: batch rolled back")
 
@@ -278,7 +291,7 @@ class PatchManager:
     # Telemetry
     # ------------------------------------------------------------------
 
-    def get_stats(self) -> Dict[str, int]:
+    def get_stats(self) -> dict[str, int]:
         """Return per-patch call counters.
 
         Returns:
@@ -288,10 +301,10 @@ class PatchManager:
         with self._lock:
             return dict(self._counters)
 
-    def get_all_stats(self) -> Dict[str, int]:
+    def get_all_stats(self) -> dict[str, int]:
         """Return counters for ALL registered patches (including zero-count)."""
         with self._lock:
-            result: Dict[str, int] = {}
+            result: dict[str, int] = {}
             for record in self._patches:
                 result[record.patch_name] = self._counters.get(record.patch_name, 0)
             return result
@@ -307,7 +320,7 @@ class PatchManager:
         with self._lock:
             return len(self._patches)
 
-    def get_patch_names(self) -> List[str]:
+    def get_patch_names(self) -> list[str]:
         """Return names of all currently applied patches."""
         with self._lock:
             return [r.patch_name for r in self._patches]

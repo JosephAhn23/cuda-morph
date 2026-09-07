@@ -3,9 +3,6 @@
 from __future__ import annotations
 
 import sys
-from unittest.mock import patch
-
-import pytest
 
 from ascend_compat.ecosystem._flash_attn_hook import (
     _FlashAttnFinder,
@@ -28,7 +25,8 @@ class TestFlashAttnHook:
         """Clean up after each test."""
         uninstall_flash_attn_hook()
         for key in list(sys.modules):
-            if key == "flash_attn" or (key.startswith("flash_attn.") and "ascend_compat" not in key):
+            is_flash_attn_submodule = key.startswith("flash_attn.") and "ascend_compat" not in key
+            if key == "flash_attn" or is_flash_attn_submodule:
                 del sys.modules[key]
 
     def test_install_adds_finder(self) -> None:
@@ -56,6 +54,7 @@ class TestFlashAttnHook:
                 del sys.modules[key]
 
         import importlib
+
         fa = importlib.import_module("flash_attn")
 
         # Should have our function
@@ -72,6 +71,7 @@ class TestFlashAttnHook:
                 del sys.modules[key]
 
         import importlib
+
         fai = importlib.import_module("flash_attn.flash_attn_interface")
         assert hasattr(fai, "flash_attn_func")
 

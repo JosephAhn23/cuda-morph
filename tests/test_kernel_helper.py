@@ -7,15 +7,14 @@ import tempfile
 
 import pytest
 
-from ascend_compat.kernel_helper.spec import (
-    SUPPORTED_DTYPES,
-    SUPPORTED_PATTERNS,
-    OpSpec,
-)
 from ascend_compat.kernel_helper.scaffold import (
     _to_cann_dtype,
     _to_cpp_type,
     scaffold,
+)
+from ascend_compat.kernel_helper.spec import (
+    SUPPORTED_DTYPES,
+    OpSpec,
 )
 
 

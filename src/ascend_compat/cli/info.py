@@ -9,4 +9,5 @@ import click
 def info() -> None:
     """Show system info and shim status."""
     from ascend_compat.cli._info import show_info
+
     click.echo(show_info())

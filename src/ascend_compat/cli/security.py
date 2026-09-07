@@ -20,7 +20,7 @@ def security() -> None:
         "have been fingerprinted yet. Results below only check file presence,\n"
         "not actual integrity. See doctor/security_check.py to contribute hashes.\n"
     )
-    from ascend_compat.doctor.security_check import full_security_check, format_security_report
+    from ascend_compat.doctor.security_check import format_security_report, full_security_check
 
     results = full_security_check()
     click.echo(format_security_report(results))

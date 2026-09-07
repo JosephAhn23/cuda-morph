@@ -10,10 +10,12 @@ import click
 def doctor(full: bool) -> None:
     """Run environment diagnostics (versions, hardware, compatibility)."""
     if full:
-        from ascend_compat.doctor.env_setup import full_environment_check, format_env_report
+        from ascend_compat.doctor.env_setup import format_env_report, full_environment_check
+
         results = full_environment_check()
         click.echo(format_env_report(results))
     else:
         from ascend_compat.doctor.version_check import check_versions, format_report
+
         results = check_versions()
         click.echo(format_report(results))

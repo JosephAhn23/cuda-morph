@@ -25,7 +25,7 @@ Usage::
     scaffold(spec, output_dir="./my_custom_add")
 """
 
-from ascend_compat.kernel_helper.spec import OpSpec
 from ascend_compat.kernel_helper.scaffold import scaffold
+from ascend_compat.kernel_helper.spec import OpSpec
 
 __all__ = ["OpSpec", "scaffold"]

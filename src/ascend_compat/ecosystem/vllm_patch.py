@@ -45,19 +45,21 @@ from __future__ import annotations
 import os
 import shutil
 import warnings
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 from ascend_compat._backend import has_npu
 from ascend_compat._logging import get_logger
 from ascend_compat.cuda_shim.quantization import (
     get_supported_methods as _get_supported,
+)
+from ascend_compat.cuda_shim.quantization import (
     get_unsupported_methods as _get_unsupported,
 )
 
 logger = get_logger(__name__)
 
 _applied = False
-_patch_results: Dict[str, bool] = {}
+_patch_results: dict[str, bool] = {}
 
 # Tested vLLM versions
 _TESTED_VLLM = ((0, 4), (0, 5), (0, 6))
@@ -82,6 +84,7 @@ def apply() -> None:
     # Version guard
     try:
         import vllm  # type: ignore[import-untyped]
+
         ver_str = getattr(vllm, "__version__", "0.0.0")
         parts = ver_str.split(".")[:2]
         vllm_ver = tuple(int(p) for p in parts)
@@ -105,7 +108,7 @@ def apply() -> None:
     logger.info("vLLM/vllm-ascend compatibility patches applied")
 
 
-def get_patch_results() -> Dict[str, bool]:
+def get_patch_results() -> dict[str, bool]:
     """Return verification results."""
     return dict(_patch_results)
 
@@ -124,12 +127,12 @@ def _patch_visible_devices() -> None:
         logger.info("vLLM: CUDA_VISIBLE_DEVICES=%s → ASCEND_RT_VISIBLE_DEVICES", cuda_vis)
 
 
-def _validate_cann_env() -> Dict[str, str]:
+def _validate_cann_env() -> dict[str, str]:
     """Validate CANN environment for custom operator compilation.
 
     Returns dict of environment issues (empty = all good).
     """
-    issues: Dict[str, str] = {}
+    issues: dict[str, str] = {}
 
     # Check ASCEND_HOME_PATH
     ascend_home = os.environ.get("ASCEND_HOME_PATH", "")
@@ -227,9 +230,9 @@ def _patch_vllm_quant_detection() -> None:
                     compat = check_quant_method(quant)
                     if not compat.supported:
                         logger.error(
-                            "Quantization method '%s' is NOT supported on Ascend NPU.\n"
-                            "  %s",
-                            quant, compat.suggestion,
+                            "Quantization method '%s' is NOT supported on Ascend NPU.\n  %s",
+                            quant,
+                            compat.suggestion,
                         )
 
             vllm.config.ModelConfig.__init__ = _patched_init
@@ -241,13 +244,13 @@ def _patch_vllm_quant_detection() -> None:
         logger.debug("Failed to patch vLLM quant detection: %s", exc)
 
 
-def check_vllm_readiness() -> Dict[str, Any]:
+def check_vllm_readiness() -> dict[str, Any]:
     """Check if the environment is ready for vllm-ascend.
 
     Returns:
         Dict with "ready" (bool), "issues" (list), and "info" (dict).
     """
-    result: Dict[str, Any] = {"ready": True, "issues": [], "info": {}}
+    result: dict[str, Any] = {"ready": True, "issues": [], "info": {}}
 
     # Check NPU availability
     if not has_npu():
@@ -257,6 +260,7 @@ def check_vllm_readiness() -> Dict[str, Any]:
     # Check vLLM installation
     try:
         import vllm
+
         result["info"]["vllm_version"] = getattr(vllm, "__version__", "unknown")
     except ImportError:
         result["ready"] = False
@@ -265,11 +269,11 @@ def check_vllm_readiness() -> Dict[str, Any]:
     # Check vllm-ascend plugin
     try:
         import vllm_ascend  # type: ignore[import-untyped]
+
         result["info"]["vllm_ascend_version"] = getattr(vllm_ascend, "__version__", "unknown")
     except ImportError:
         result["issues"].append(
-            "vllm-ascend plugin not installed. "
-            "Install: pip install vllm-ascend"
+            "vllm-ascend plugin not installed. Install: pip install vllm-ascend"
         )
 
     # Check CANN environment
@@ -281,6 +285,7 @@ def check_vllm_readiness() -> Dict[str, Any]:
     # Check torch_npu
     try:
         import torch_npu  # type: ignore[import-untyped]
+
         result["info"]["torch_npu_version"] = getattr(torch_npu, "__version__", "unknown")
     except ImportError:
         result["ready"] = False

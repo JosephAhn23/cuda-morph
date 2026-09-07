@@ -10,7 +10,6 @@ Marked with ``@pytest.mark.stress`` so they can be skipped on quick CI runs.
 from __future__ import annotations
 
 import gc
-import sys
 
 import pytest
 import torch
@@ -77,6 +76,7 @@ class TestPatchManagerStress:
     def test_many_patches_no_crash(self):
         """Applying and reverting 1000 patches should work."""
         import types
+
         from ascend_compat.cuda_shim._patch_manager import PatchManager
 
         mgr = PatchManager()
@@ -95,6 +95,7 @@ class TestPatchManagerStress:
     def test_counter_accuracy_high_volume(self):
         """100k calls through counters should be exact."""
         import types
+
         from ascend_compat.cuda_shim._patch_manager import PatchManager
 
         mgr = PatchManager()

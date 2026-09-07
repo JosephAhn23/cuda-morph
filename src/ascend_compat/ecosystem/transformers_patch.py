@@ -34,7 +34,7 @@ from __future__ import annotations
 
 import sys
 import warnings
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 from ascend_compat._backend import has_npu
 from ascend_compat._logging import get_logger
@@ -48,10 +48,10 @@ _TESTED_TRANSFORMERS = ((4, 36), (4, 40), (4, 44), (4, 45), (4, 50))
 _TESTED_ACCELERATE = ((0, 28), (0, 30), (0, 33), (0, 34), (1, 0))
 
 # Patch verification results
-_patch_results: Dict[str, bool] = {}
+_patch_results: dict[str, bool] = {}
 
 
-def _get_library_version(module_name: str) -> Optional[Tuple[int, ...]]:
+def _get_library_version(module_name: str) -> tuple[int, ...] | None:
     """Return (major, minor) version tuple for an installed library, or None."""
     try:
         mod = __import__(module_name)
@@ -62,8 +62,9 @@ def _get_library_version(module_name: str) -> Optional[Tuple[int, ...]]:
         return None
 
 
-def _check_version_tested(lib_name: str, version: Tuple[int, ...],
-                          tested: Tuple[Tuple[int, int], ...]) -> None:
+def _check_version_tested(
+    lib_name: str, version: tuple[int, ...], tested: tuple[tuple[int, int], ...]
+) -> None:
     """Warn if the installed library version hasn't been tested."""
     if version and version[:2] not in tested:
         tested_strs = [f"{v[0]}.{v[1]}" for v in tested]
@@ -110,7 +111,7 @@ def apply() -> None:
     logger.info("HuggingFace ecosystem patches applied")
 
 
-def get_patch_results() -> Dict[str, bool]:
+def get_patch_results() -> dict[str, bool]:
     """Return verification results: {patch_name: landed_successfully}."""
     return dict(_patch_results)
 
@@ -133,6 +134,7 @@ def _patch_flash_attn_check() -> None:
                 # If flash_attn (or our shim) is importable, return True
                 try:
                     from ascend_compat.ecosystem import flash_attn  # noqa: F401
+
                     logger.debug("is_flash_attn_2_available() → True (via cuda-morph shim)")
                     return True
                 except ImportError:
@@ -200,6 +202,7 @@ def _verify_patches() -> None:
     # Verify flash_attn_check
     try:
         import transformers.utils  # type: ignore[import-untyped]
+
         if hasattr(transformers.utils, "is_flash_attn_2_available"):
             result = transformers.utils.is_flash_attn_2_available()
             _patch_results["flash_attn_check"] = result is True

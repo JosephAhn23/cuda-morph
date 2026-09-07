@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Optional
-
 import click
 
 
@@ -12,9 +10,9 @@ import click
 @click.option("--device", default="cpu", help="Device for ops benchmark")
 @click.option("--iterations", type=int, default=None, help="Number of iterations")
 @click.option("--csv", "csv_file", default=None, help="Export results to CSV file")
-def bench(mode: str, device: str, iterations: Optional[int], csv_file: Optional[str]) -> None:
+def bench(mode: str, device: str, iterations: int | None, csv_file: str | None) -> None:
     """Run benchmarks (overhead measurement, op latency, memory bandwidth)."""
-    from ascend_compat.bench import ShimOverheadBench, OpLatencyBench, MemoryBandwidthBench
+    from ascend_compat.bench import MemoryBandwidthBench, OpLatencyBench, ShimOverheadBench
 
     if mode == "overhead":
         iters = iterations or 50000

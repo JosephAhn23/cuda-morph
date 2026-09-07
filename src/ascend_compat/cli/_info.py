@@ -9,6 +9,7 @@ def show_info() -> str:
 
     try:
         import torch
+
         lines.append(f"PyTorch version:     {torch.__version__}")
     except ImportError:
         lines.append("PyTorch:             NOT INSTALLED")
@@ -16,6 +17,7 @@ def show_info() -> str:
 
     try:
         import ascend_compat
+
         lines.append(f"cuda-morph version:  {ascend_compat.__version__}")
         lines.append(f"Shim activated:      {ascend_compat.is_activated()}")
         lines.append(f"Preferred backend:   {ascend_compat.preferred_backend().value}")
@@ -34,14 +36,14 @@ def show_info() -> str:
     lines.append("Registered backends:")
     try:
         from ascend_compat.backends import BACKEND_REGISTRY
+
         for name, cls in BACKEND_REGISTRY.items():
             version = cls.get_adapter_version()
             available = cls.is_available()
             icon = "[OK]" if available else "[--]"
             ver_str = version if version else "not installed"
             lines.append(
-                f"  {icon} {cls.display_name:<25} "
-                f"adapter={cls.adapter_module:<12} ({ver_str})"
+                f"  {icon} {cls.display_name:<25} adapter={cls.adapter_module:<12} ({ver_str})"
             )
     except Exception:
         pass

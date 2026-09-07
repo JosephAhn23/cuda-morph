@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
-
 
 class TestBenchResult:
     """Test BenchResult data class."""
@@ -79,9 +77,10 @@ class TestBenchReport:
 
         # With fingerprint (default)
         csv_with_fp = report.to_csv()
-        fp_lines = [l for l in csv_with_fp.strip().split("\n") if l.startswith("#")]
+        csv_lines = csv_with_fp.strip().split("\n")
+        fp_lines = [ln for ln in csv_lines if ln.startswith("#")]
         assert len(fp_lines) > 0  # fingerprint header lines present
-        data_lines = [l for l in csv_with_fp.strip().split("\n") if not l.startswith("#")]
+        data_lines = [ln for ln in csv_lines if not ln.startswith("#")]
         assert "operation" in data_lines[0]
 
     def test_empty_report(self):
@@ -107,9 +106,10 @@ class TestTimeit:
 
     def test_timeit_measures_work(self):
         """Verify that more iterations take more time."""
+        import time
+
         from ascend_compat.bench import _timeit
 
-        import time
         elapsed1, _ = _timeit(lambda: time.sleep(0.0001), iterations=5, warmup=1)
         elapsed2, _ = _timeit(lambda: time.sleep(0.0001), iterations=50, warmup=1)
         # 50 iterations should take roughly 10x longer (with tolerance)
@@ -166,6 +166,7 @@ class TestModelThroughputBench:
 
     def test_run_simple_model(self):
         import torch
+
         from ascend_compat.bench import ModelThroughputBench
 
         # Simple linear model

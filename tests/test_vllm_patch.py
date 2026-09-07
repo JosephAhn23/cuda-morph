@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import os
 import sys
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
@@ -63,6 +63,7 @@ class TestApply:
 
     def test_skips_without_npu(self) -> None:
         import ascend_compat.ecosystem.vllm_patch as mod
+
         mod._applied = False
         with patch("ascend_compat.ecosystem.vllm_patch.has_npu", return_value=False):
             apply()
@@ -70,12 +71,14 @@ class TestApply:
 
     def test_applies_with_npu(self) -> None:
         import ascend_compat.ecosystem.vllm_patch as mod
+
         mod._applied = False
-        with patch("ascend_compat.ecosystem.vllm_patch.has_npu", return_value=True):
-            with patch("ascend_compat.ecosystem.vllm_patch._patch_visible_devices"):
-                with patch("ascend_compat.ecosystem.vllm_patch._validate_cann_env", return_value={}):
-                    with patch("ascend_compat.ecosystem.vllm_patch._patch_vllm_attention_backend"):
-                        with patch("ascend_compat.ecosystem.vllm_patch._patch_vllm_quant_detection"):
+        modpath = "ascend_compat.ecosystem.vllm_patch"
+        with patch(f"{modpath}.has_npu", return_value=True):
+            with patch(f"{modpath}._patch_visible_devices"):
+                with patch(f"{modpath}._validate_cann_env", return_value={}):
+                    with patch(f"{modpath}._patch_vllm_attention_backend"):
+                        with patch(f"{modpath}._patch_vllm_quant_detection"):
                             apply()
         assert mod._applied is True
         mod._applied = False  # Reset for other tests

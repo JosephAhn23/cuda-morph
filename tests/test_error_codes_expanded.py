@@ -5,10 +5,10 @@ from __future__ import annotations
 import pytest
 
 from ascend_compat.doctor.error_codes import (
+    format_error,
     get_all_codes,
     search_errors,
     translate_error,
-    format_error,
 )
 
 
@@ -16,19 +16,35 @@ class TestExpandedErrorCodes:
     """Test the newly added error codes."""
 
     # ── Runtime errors ──────────────────────────────────────────────
-    @pytest.mark.parametrize("code", [
-        "507001", "507002", "507005", "507014", "507018",
-        "507021", "507023",
-    ])
+    @pytest.mark.parametrize(
+        "code",
+        [
+            "507001",
+            "507002",
+            "507005",
+            "507014",
+            "507018",
+            "507021",
+            "507023",
+        ],
+    )
     def test_runtime_codes_exist(self, code: str) -> None:
         info = translate_error(code)
         assert info is not None, f"Error code {code} not in database"
         assert info.category == "runtime"
 
     # ── Operator errors ─────────────────────────────────────────────
-    @pytest.mark.parametrize("code", [
-        "507030", "507032", "507034", "507036", "507038", "507039",
-    ])
+    @pytest.mark.parametrize(
+        "code",
+        [
+            "507030",
+            "507032",
+            "507034",
+            "507036",
+            "507038",
+            "507039",
+        ],
+    )
     def test_operator_codes_exist(self, code: str) -> None:
         info = translate_error(code)
         assert info is not None, f"Error code {code} not in database"
@@ -61,9 +77,14 @@ class TestExpandedErrorCodes:
         assert "quint8" in info.summary.lower() or "QUINT8" in info.summary
 
     # ── Environment errors ──────────────────────────────────────────
-    @pytest.mark.parametrize("code", [
-        "CANN_NOT_FOUND", "DRIVER_MISMATCH", "FIRMWARE_MISMATCH",
-    ])
+    @pytest.mark.parametrize(
+        "code",
+        [
+            "CANN_NOT_FOUND",
+            "DRIVER_MISMATCH",
+            "FIRMWARE_MISMATCH",
+        ],
+    )
     def test_environment_codes_exist(self, code: str) -> None:
         info = translate_error(code)
         assert info is not None

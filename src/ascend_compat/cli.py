@@ -35,8 +35,6 @@ import re
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, List, Optional, Set, Tuple
-
 
 # ---------------------------------------------------------------------------
 # Data structures
@@ -47,11 +45,11 @@ from typing import Dict, List, Optional, Set, Tuple
 class CudaDependency:
     """A single CUDA dependency found in the source code."""
 
-    api_call: str           # e.g. "torch.cuda.is_available"
-    line_number: int        # 1-based line number
-    line_text: str          # The source line (stripped)
-    status: str             # "transparent", "needs_wrapper", "unsupported", "unknown"
-    suggestion: Optional[str] = None  # Migration suggestion
+    api_call: str  # e.g. "torch.cuda.is_available"
+    line_number: int  # 1-based line number
+    line_text: str  # The source line (stripped)
+    status: str  # "transparent", "needs_wrapper", "unsupported", "unknown"
+    suggestion: str | None = None  # Migration suggestion
 
 
 @dataclass
@@ -60,7 +58,7 @@ class CheckReport:
 
     file_path: str
     total_cuda_refs: int = 0
-    dependencies: List[CudaDependency] = field(default_factory=list)
+    dependencies: list[CudaDependency] = field(default_factory=list)
     imports_torch_cuda: bool = False
     imports_cudnn: bool = False
     has_cuda_device_strings: bool = False
@@ -70,16 +68,16 @@ class CheckReport:
     def summary(self) -> str:
         """Return a human-readable summary of the report."""
         lines = [
-            f"╔══════════════════════════════════════════════════════════════╗",
+            "╔══════════════════════════════════════════════════════════════╗",
             f"║  cuda-morph migration check: {Path(self.file_path).name:<28}║",
-            f"╠══════════════════════════════════════════════════════════════╣",
+            "╠══════════════════════════════════════════════════════════════╣",
             f"║  Total CUDA references:  {self.total_cuda_refs:<34}║",
             f"║  Migration difficulty:   {self.migration_difficulty:<34}║",
-            f"╠══════════════════════════════════════════════════════════════╣",
+            "╠══════════════════════════════════════════════════════════════╣",
         ]
 
         # Group by status
-        by_status: Dict[str, List[CudaDependency]] = {}
+        by_status: dict[str, list[CudaDependency]] = {}
         for dep in self.dependencies:
             by_status.setdefault(dep.status, []).append(dep)
 
@@ -93,7 +91,7 @@ class CheckReport:
         for status, label in status_labels.items():
             deps = by_status.get(status, [])
             if deps:
-                lines.append(f"║                                                              ║")
+                lines.append("║                                                              ║")
                 lines.append(f"║  {label:<58}║")
                 for dep in deps:
                     loc = f"  L{dep.line_number}: {dep.api_call}"
@@ -107,15 +105,15 @@ class CheckReport:
 
         # Quick fixes section
         if self.has_cuda_device_strings or self.has_dot_cuda_calls:
-            lines.append(f"║                                                              ║")
-            lines.append(f"║  Quick fixes:                                                ║")
+            lines.append("║                                                              ║")
+            lines.append("║  Quick fixes:                                                ║")
             if self.has_cuda_device_strings:
-                lines.append(f'║    • Replace "cuda" strings with ascend_compat.device...    ║')
+                lines.append('║    • Replace "cuda" strings with ascend_compat.device...    ║')
             if self.has_dot_cuda_calls:
-                lines.append(f"║    • Replace .cuda() with ascend_compat.device.to_device()  ║")
-            lines.append(f"║    • Or: just add 'import ascend_compat' at the top         ║")
+                lines.append("║    • Replace .cuda() with ascend_compat.device.to_device()  ║")
+            lines.append("║    • Or: just add 'import ascend_compat' at the top         ║")
 
-        lines.append(f"╚══════════════════════════════════════════════════════════════╝")
+        lines.append("╚══════════════════════════════════════════════════════════════╝")
         return "\n".join(lines)
 
 
@@ -124,7 +122,7 @@ class CheckReport:
 # ---------------------------------------------------------------------------
 
 # Map of API call pattern → (status, suggestion)
-_CUDA_PATTERNS: Dict[str, Tuple[str, Optional[str]]] = {
+_CUDA_PATTERNS: dict[str, tuple[str, str | None]] = {
     # Device management
     "torch.cuda.is_available": ("needs_wrapper", "Use ascend_compat.device.is_available()"),
     "torch.cuda.device_count": ("needs_wrapper", "Use ascend_compat.device.device_count()"),
@@ -132,17 +130,20 @@ _CUDA_PATTERNS: Dict[str, Tuple[str, Optional[str]]] = {
     "torch.cuda.set_device": ("needs_wrapper", "Use ascend_compat.device.set_device()"),
     "torch.cuda.get_device_name": ("needs_wrapper", "Use ascend_compat.device.get_device_name()"),
     "torch.cuda.get_device_properties": (
-        "needs_wrapper", "Use ascend_compat.device.get_device_properties()"
+        "needs_wrapper",
+        "Use ascend_compat.device.get_device_properties()",
     ),
     # Memory
     "torch.cuda.memory_allocated": ("needs_wrapper", "Use ascend_compat.memory.memory_allocated()"),
     "torch.cuda.max_memory_allocated": (
-        "needs_wrapper", "Use ascend_compat.memory.max_memory_allocated()"
+        "needs_wrapper",
+        "Use ascend_compat.memory.max_memory_allocated()",
     ),
     "torch.cuda.empty_cache": ("needs_wrapper", "Use ascend_compat.memory.empty_cache()"),
     "torch.cuda.memory_reserved": ("needs_wrapper", "Use ascend_compat.memory.memory_reserved()"),
     "torch.cuda.reset_peak_memory_stats": (
-        "needs_wrapper", "Use ascend_compat.memory.reset_peak_memory_stats()"
+        "needs_wrapper",
+        "Use ascend_compat.memory.reset_peak_memory_stats()",
     ),
     "torch.cuda.memory_summary": ("needs_wrapper", "Use ascend_compat.memory.memory_summary()"),
     "torch.cuda.memory_snapshot": ("unsupported", "No Ascend equivalent — remove or guard"),
@@ -159,10 +160,12 @@ _CUDA_PATTERNS: Dict[str, Tuple[str, Optional[str]]] = {
     "torch.cuda.manual_seed_all": ("needs_wrapper", "Use ascend_compat.ops.manual_seed_all()"),
     # cuDNN
     "torch.backends.cudnn.benchmark": (
-        "needs_wrapper", "Safe to keep; no-op on Ascend via CudnnShim"
+        "needs_wrapper",
+        "Safe to keep; no-op on Ascend via CudnnShim",
     ),
     "torch.backends.cudnn.deterministic": (
-        "needs_wrapper", "Maps to torch.use_deterministic_algorithms()"
+        "needs_wrapper",
+        "Maps to torch.use_deterministic_algorithms()",
     ),
     "torch.backends.cudnn.enabled": ("needs_wrapper", "Safe to keep; shim handles it"),
     # CUDA Graphs
@@ -183,9 +186,9 @@ _CUDA_PATTERNS: Dict[str, Tuple[str, Optional[str]]] = {
 class _CudaVisitor(ast.NodeVisitor):
     """AST visitor that finds CUDA-specific patterns in Python source."""
 
-    def __init__(self, source_lines: List[str]) -> None:
+    def __init__(self, source_lines: list[str]) -> None:
         self.source_lines = source_lines
-        self.found: List[CudaDependency] = []
+        self.found: list[CudaDependency] = []
         self.imports_torch_cuda = False
         self.imports_cudnn = False
 
@@ -218,18 +221,20 @@ class _CudaVisitor(ast.NodeVisitor):
         """Detect .cuda() calls on objects (tensor.cuda(), model.cuda())."""
         if isinstance(node.func, ast.Attribute) and node.func.attr == "cuda":
             line_text = self._get_line(node.lineno)
-            self.found.append(CudaDependency(
-                api_call=".cuda()",
-                line_number=node.lineno,
-                line_text=line_text,
-                status="needs_wrapper",
-                suggestion="Replace with ascend_compat.device.to_device(obj)",
-            ))
+            self.found.append(
+                CudaDependency(
+                    api_call=".cuda()",
+                    line_number=node.lineno,
+                    line_text=line_text,
+                    status="needs_wrapper",
+                    suggestion="Replace with ascend_compat.device.to_device(obj)",
+                )
+            )
         self.generic_visit(node)
 
-    def _get_attr_chain(self, node: ast.AST) -> Optional[str]:
+    def _get_attr_chain(self, node: ast.AST) -> str | None:
         """Reconstruct an attribute chain like 'torch.cuda.is_available'."""
-        parts: List[str] = []
+        parts: list[str] = []
         current = node
         while isinstance(current, ast.Attribute):
             parts.append(current.attr)
@@ -243,13 +248,15 @@ class _CudaVisitor(ast.NodeVisitor):
         """Check if an attribute chain matches a known CUDA pattern."""
         for pattern, (status, suggestion) in _CUDA_PATTERNS.items():
             if chain.startswith(pattern) or chain == pattern:
-                self.found.append(CudaDependency(
-                    api_call=chain,
-                    line_number=lineno,
-                    line_text=self._get_line(lineno),
-                    status=status,
-                    suggestion=suggestion,
-                ))
+                self.found.append(
+                    CudaDependency(
+                        api_call=chain,
+                        line_number=lineno,
+                        line_text=self._get_line(lineno),
+                        status=status,
+                        suggestion=suggestion,
+                    )
+                )
                 return
 
         # Generic torch.cuda.* detection — but skip bare "torch.cuda" which
@@ -257,17 +264,17 @@ class _CudaVisitor(ast.NodeVisitor):
         # partial matches that are sub-expressions of known patterns.
         if "torch.cuda" in chain and chain not in ("torch.cuda", "torch.backends"):
             # Check if this is a prefix of a known pattern (e.g. "torch.cuda.amp")
-            is_namespace_only = any(
-                p.startswith(chain + ".") for p in _CUDA_PATTERNS
-            )
+            is_namespace_only = any(p.startswith(chain + ".") for p in _CUDA_PATTERNS)
             if not is_namespace_only:
-                self.found.append(CudaDependency(
-                    api_call=chain,
-                    line_number=lineno,
-                    line_text=self._get_line(lineno),
-                    status="unknown",
-                    suggestion="Check Ascend compatibility for this API",
-                ))
+                self.found.append(
+                    CudaDependency(
+                        api_call=chain,
+                        line_number=lineno,
+                        line_text=self._get_line(lineno),
+                        status="unknown",
+                        suggestion="Check Ascend compatibility for this API",
+                    )
+                )
 
     def _get_line(self, lineno: int) -> str:
         """Get the source line (1-indexed)."""
@@ -289,7 +296,7 @@ _CUDA_STRING_RE = re.compile(
 _DOT_CUDA_RE = re.compile(r"""\.cuda\s*\(""")
 
 
-def _scan_strings(source: str, lines: List[str]) -> Tuple[bool, bool, List[CudaDependency]]:
+def _scan_strings(source: str, lines: list[str]) -> tuple[bool, bool, list[CudaDependency]]:
     """Scan for CUDA device strings and .cuda() calls via regex.
 
     Returns:
@@ -297,7 +304,7 @@ def _scan_strings(source: str, lines: List[str]) -> Tuple[bool, bool, List[CudaD
     """
     has_cuda_strings = False
     has_dot_cuda = False
-    deps: List[CudaDependency] = []
+    deps: list[CudaDependency] = []
 
     for i, line in enumerate(lines, 1):
         stripped = line.strip()
@@ -306,13 +313,15 @@ def _scan_strings(source: str, lines: List[str]) -> Tuple[bool, bool, List[CudaD
 
         if _CUDA_STRING_RE.search(line):
             has_cuda_strings = True
-            deps.append(CudaDependency(
-                api_call='"cuda" device string',
-                line_number=i,
-                line_text=stripped,
-                status="needs_wrapper",
-                suggestion='Add "import ascend_compat" or use device.get_device_string()',
-            ))
+            deps.append(
+                CudaDependency(
+                    api_call='"cuda" device string',
+                    line_number=i,
+                    line_text=stripped,
+                    status="needs_wrapper",
+                    suggestion='Add "import ascend_compat" or use device.get_device_string()',
+                )
+            )
 
     return has_cuda_strings, has_dot_cuda, deps
 
@@ -349,13 +358,15 @@ def check_file(file_path: str) -> CheckReport:
         report.imports_torch_cuda = visitor.imports_torch_cuda
         report.imports_cudnn = visitor.imports_cudnn
     except SyntaxError as e:
-        report.dependencies.append(CudaDependency(
-            api_call="<syntax error>",
-            line_number=e.lineno or 0,
-            line_text=str(e),
-            status="unknown",
-            suggestion="Fix syntax error before checking",
-        ))
+        report.dependencies.append(
+            CudaDependency(
+                api_call="<syntax error>",
+                line_number=e.lineno or 0,
+                line_text=str(e),
+                status="unknown",
+                suggestion="Fix syntax error before checking",
+            )
+        )
 
     # Regex pass
     has_strings, has_dot_cuda, string_deps = _scan_strings(source, lines)
@@ -478,6 +489,7 @@ def show_info() -> str:
 
     try:
         import torch
+
         lines.append(f"PyTorch version:     {torch.__version__}")
     except ImportError:
         lines.append("PyTorch:             NOT INSTALLED")
@@ -485,6 +497,7 @@ def show_info() -> str:
 
     try:
         import ascend_compat
+
         lines.append(f"cuda-morph version:  {ascend_compat.__version__}")
         lines.append(f"Shim activated:      {ascend_compat.is_activated()}")
         lines.append(f"Preferred backend:   {ascend_compat.preferred_backend().value}")
@@ -503,14 +516,14 @@ def show_info() -> str:
     lines.append("Registered backends:")
     try:
         from ascend_compat.backends import BACKEND_REGISTRY
+
         for name, cls in BACKEND_REGISTRY.items():
             version = cls.get_adapter_version()
             available = cls.is_available()
             icon = "[OK]" if available else "[--]"
             ver_str = version if version else "not installed"
             lines.append(
-                f"  {icon} {cls.display_name:<25} "
-                f"adapter={cls.adapter_module:<12} ({ver_str})"
+                f"  {icon} {cls.display_name:<25} adapter={cls.adapter_module:<12} ({ver_str})"
             )
     except Exception:
         pass
@@ -523,7 +536,7 @@ def show_info() -> str:
 # ---------------------------------------------------------------------------
 
 
-def _run_script(script_path: str, script_args: List[str]) -> int:
+def _run_script(script_path: str, script_args: list[str]) -> int:
     """Launch a Python script with full cuda-morph shims active.
 
     This is the ``cuda-morph run`` command.  It:
@@ -542,14 +555,17 @@ def _run_script(script_path: str, script_args: List[str]) -> int:
 
     # Explicitly activate the shim
     from ascend_compat.cuda_shim import activate
+
     activate()
 
     # Install flash_attn hook
     from ascend_compat.ecosystem._flash_attn_hook import install_flash_attn_hook
+
     install_flash_attn_hook()
 
     # Apply ecosystem patches (safe even if libraries aren't installed)
-    from ascend_compat.ecosystem import transformers_patch, deepspeed_patch, vllm_patch
+    from ascend_compat.ecosystem import deepspeed_patch, transformers_patch, vllm_patch
+
     transformers_patch.apply()
     deepspeed_patch.apply()
     vllm_patch.apply()
@@ -570,11 +586,13 @@ def _run_script(script_path: str, script_args: List[str]) -> int:
 def _run_doctor(full: bool = False) -> str:
     """Run the doctor diagnostic checks."""
     if full:
-        from ascend_compat.doctor.env_setup import full_environment_check, format_env_report
+        from ascend_compat.doctor.env_setup import format_env_report, full_environment_check
+
         results = full_environment_check()
         return format_env_report(results)
 
     from ascend_compat.doctor.version_check import check_versions, format_report
+
     results = check_versions()
     return format_report(results)
 
@@ -582,10 +600,11 @@ def _run_doctor(full: bool = False) -> str:
 def _translate_cann_error(code: str) -> str:
     """Translate a CANN error code."""
     from ascend_compat.doctor.error_codes import format_error
+
     return format_error(code)
 
 
-def main(argv: Optional[List[str]] = None) -> int:
+def main(argv: list[str] | None = None) -> int:
     """Main CLI entry point.
 
     Usage::
@@ -610,9 +629,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         help="Scan a Python file for CUDA dependencies",
     )
     check_parser.add_argument("file", help="Python file to scan")
-    check_parser.add_argument(
-        "--json", action="store_true", help="Output as JSON"
-    )
+    check_parser.add_argument("--json", action="store_true", help="Output as JSON")
 
     # port command
     port_parser = subparsers.add_parser(
@@ -620,9 +637,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         help="Auto-rewrite simple CUDA calls to cuda-morph",
     )
     port_parser.add_argument("file", help="Python file to port")
-    port_parser.add_argument(
-        "--dry-run", action="store_true", help="Show changes without writing"
-    )
+    port_parser.add_argument("--dry-run", action="store_true", help="Show changes without writing")
 
     # doctor command
     doctor_parser = subparsers.add_parser(
@@ -630,7 +645,8 @@ def main(argv: Optional[List[str]] = None) -> int:
         help="Run environment diagnostics (versions, hardware, compatibility)",
     )
     doctor_parser.add_argument(
-        "--full", action="store_true",
+        "--full",
+        action="store_true",
         help="Run deep environment validation (CANN dirs, driver, firmware, libs)",
     )
 
@@ -648,7 +664,8 @@ def main(argv: Optional[List[str]] = None) -> int:
     )
     run_parser.add_argument("script", help="Python script to run")
     run_parser.add_argument(
-        "script_args", nargs=argparse.REMAINDER,
+        "script_args",
+        nargs=argparse.REMAINDER,
         help="Arguments to pass to the script",
     )
 
@@ -672,12 +689,15 @@ def main(argv: Optional[List[str]] = None) -> int:
     )
     scaffold_parser.add_argument("name", help="Operator name (PascalCase, e.g. FusedRMSNorm)")
     scaffold_parser.add_argument(
-        "--pattern", default="elementwise",
+        "--pattern",
+        default="elementwise",
         choices=["elementwise", "reduction", "matmul", "custom"],
         help="Computation pattern (default: elementwise)",
     )
     scaffold_parser.add_argument(
-        "--output", "-o", default=None,
+        "--output",
+        "-o",
+        default=None,
         help="Output directory (default: ./<name_lower>_op)",
     )
 
@@ -687,31 +707,38 @@ def main(argv: Optional[List[str]] = None) -> int:
         help="Run benchmarks (overhead measurement, op latency, memory bandwidth)",
     )
     bench_parser.add_argument(
-        "mode", nargs="?", default="overhead",
+        "mode",
+        nargs="?",
+        default="overhead",
         choices=["overhead", "ops", "bandwidth"],
         help="Benchmark mode: 'overhead', 'ops', or 'bandwidth'",
     )
     bench_parser.add_argument(
-        "--device", default="cpu",
+        "--device",
+        default="cpu",
         help="Device for ops benchmark (default: cpu)",
     )
     bench_parser.add_argument(
-        "--iterations", type=int, default=None,
+        "--iterations",
+        type=int,
+        default=None,
         help="Number of iterations (default: 50000 for overhead, 1000 for ops)",
     )
     bench_parser.add_argument(
-        "--csv", default=None, metavar="FILE",
+        "--csv",
+        default=None,
+        metavar="FILE",
         help="Export results to CSV file",
     )
 
     # compile command
-    compile_parser = subparsers.add_parser(
+    subparsers.add_parser(
         "compile",
         help="Show torch.compile backend info for Ascend",
     )
 
     # security command
-    security_parser = subparsers.add_parser(
+    subparsers.add_parser(
         "security",
         help="Verify torch_npu and CANN binary integrity",
     )
@@ -722,7 +749,8 @@ def main(argv: Optional[List[str]] = None) -> int:
         help="Empirically verify operator correctness on current device",
     )
     verify_parser.add_argument(
-        "--device", default="cpu",
+        "--device",
+        default="cpu",
         help="Device to verify on: 'npu', 'cuda', or 'cpu' (default: cpu)",
     )
 
@@ -780,12 +808,14 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     elif args.command == "quant":
         from ascend_compat.cuda_shim.quantization import check_model_quant, format_quant_report
+
         compat = check_model_quant(args.model)
         print(format_quant_report(compat))
         return 0
 
     elif args.command == "vllm":
         from ascend_compat.ecosystem.vllm_patch import check_vllm_readiness
+
         result = check_vllm_readiness()
         icon = "[OK]" if result["ready"] else "[XX]"
         print(f"{icon} vLLM readiness: {'Ready' if result['ready'] else 'Not ready'}")
@@ -797,6 +827,7 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     elif args.command == "scaffold":
         from ascend_compat.kernel_helper import OpSpec, scaffold
+
         name = args.name
         output_dir = args.output or f"./{name.lower()}_op"
         spec = OpSpec(
@@ -813,7 +844,8 @@ def main(argv: Optional[List[str]] = None) -> int:
         return 0
 
     elif args.command == "bench":
-        from ascend_compat.bench import ShimOverheadBench, OpLatencyBench, MemoryBandwidthBench
+        from ascend_compat.bench import MemoryBandwidthBench, OpLatencyBench, ShimOverheadBench
+
         if args.mode == "overhead":
             iters = args.iterations or 50000
             report = ShimOverheadBench(iterations=iters).run()
@@ -831,7 +863,8 @@ def main(argv: Optional[List[str]] = None) -> int:
         return 0
 
     elif args.command == "compile":
-        from ascend_compat.cuda_shim.compile_helpers import get_compile_info, CompatibilityPolicy
+        from ascend_compat.cuda_shim.compile_helpers import CompatibilityPolicy, get_compile_info
+
         info = get_compile_info()
         print("torch.compile configuration for Ascend:")
         print(f"  Recommended backend:  {info['recommended_backend']}")
@@ -842,6 +875,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         try:
             is_tested = CompatibilityPolicy.check_forward_compat(policy="silent")
             from ascend_compat.cuda_shim.compile_helpers import LATEST_TESTED_VERSION
+
             tested_str = ".".join(str(v) for v in LATEST_TESTED_VERSION)
             print(f"  Latest tested PyTorch: {tested_str}")
             print(f"  Version in range:     {'yes' if is_tested else 'no (untested version)'}")
@@ -850,7 +884,8 @@ def main(argv: Optional[List[str]] = None) -> int:
         return 0
 
     elif args.command == "security":
-        from ascend_compat.doctor.security_check import full_security_check, format_security_report
+        from ascend_compat.doctor.security_check import format_security_report, full_security_check
+
         results = full_security_check()
         print(format_security_report(results))
         errors = sum(1 for r in results if r.status == "error")
@@ -858,9 +893,10 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     elif args.command == "verify":
         from ascend_compat.validation import OperatorVerifier
+
         verifier = OperatorVerifier(device=args.device)
         print(f"Running operator verification on device={args.device}...")
-        print(f"(Use --device npu on Ascend hardware for real validation)\n")
+        print("(Use --device npu on Ascend hardware for real validation)\n")
         results = verifier.run_all()
         print(verifier.format_report(results))
         failed = sum(1 for r in results if not r.passed)

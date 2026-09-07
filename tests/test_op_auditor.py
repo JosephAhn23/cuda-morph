@@ -2,15 +2,14 @@
 
 from __future__ import annotations
 
-import pytest
 import torch
 import torch.nn as nn
 
 from ascend_compat.doctor.op_auditor import (
+    _KNOWN_SLOW_OPS,
+    _KNOWN_UNSUPPORTED_OPS,
     AuditReport,
     OpInfo,
-    _KNOWN_UNSUPPORTED_OPS,
-    _KNOWN_SLOW_OPS,
     audit_model,
 )
 
@@ -48,8 +47,7 @@ class TestAuditReport:
             slow_ops=1,
             ops={
                 "aten::nonzero": OpInfo(
-                    name="aten::nonzero", call_count=3, status="slow",
-                    note="Dynamic output shape"
+                    name="aten::nonzero", call_count=3, status="slow", note="Dynamic output shape"
                 ),
             },
         )

@@ -5,7 +5,6 @@ from __future__ import annotations
 import os
 import tempfile
 
-import pytest
 from click.testing import CliRunner
 
 from ascend_compat.cli import main
@@ -68,4 +67,5 @@ class TestPythonMEntry:
     def test_main_module_exists(self) -> None:
         """The __main__.py module should be importable."""
         import ascend_compat.__main__
+
         assert hasattr(ascend_compat.__main__, "main")

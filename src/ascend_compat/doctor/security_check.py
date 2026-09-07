@@ -34,7 +34,6 @@ from __future__ import annotations
 import hashlib
 import os
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
 
 from ascend_compat._logging import get_logger
 
@@ -44,11 +43,12 @@ logger = get_logger(__name__)
 @dataclass
 class IntegrityResult:
     """Result of an integrity check."""
+
     package: str
     version: str
     status: str  # "ok", "warning", "error", "unknown"
     message: str
-    details: Dict[str, str] = field(default_factory=dict)
+    details: dict[str, str] = field(default_factory=dict)
 
 
 # Known-good hashes: {version: sha256_of___init__.py}
@@ -61,7 +61,8 @@ class IntegrityResult:
 #
 # To contribute a hash:
 #   1. Install an official torch_npu release from Huawei's repo
-#   2. Run: python -c "import hashlib, torch_npu; print(hashlib.sha256(open(torch_npu.__file__,'rb').read()).hexdigest())"
+#   2. Run: python -c "import hashlib, torch_npu as t; \
+#            print(hashlib.sha256(open(t.__file__, 'rb').read()).hexdigest())"
 #   3. Submit a PR adding the version → hash mapping below
 #
 # We do NOT ship pre-populated hashes because:
@@ -69,7 +70,7 @@ class IntegrityResult:
 #   - Different CANN versions produce different binaries
 #   - A wrong hash would cause false positives, eroding trust
 #
-_KNOWN_HASHES: Dict[str, str] = {}
+_KNOWN_HASHES: dict[str, str] = {}
 
 # Expected CANN shared libraries
 _EXPECTED_CANN_LIBS = [
@@ -93,6 +94,7 @@ def verify_torch_npu_integrity() -> IntegrityResult:
     """
     try:
         import importlib.util
+
         spec = importlib.util.find_spec("torch_npu")
     except (ImportError, ModuleNotFoundError, ValueError):
         return IntegrityResult(
@@ -111,11 +113,12 @@ def verify_torch_npu_integrity() -> IntegrityResult:
         )
 
     origin = spec.origin
-    details: Dict[str, str] = {"path": origin}
+    details: dict[str, str] = {"path": origin}
 
     # Get version
     try:
         from ascend_compat._backend import get_torch_npu
+
         npu_mod = get_torch_npu()
         version = getattr(npu_mod, "__version__", "unknown") if npu_mod else "unknown"
     except Exception:  # noqa: BLE001
@@ -127,7 +130,7 @@ def verify_torch_npu_integrity() -> IntegrityResult:
         with open(origin, "rb") as f:
             file_hash = hashlib.sha256(f.read()).hexdigest()
         details["sha256"] = file_hash
-    except (OSError, IOError) as exc:
+    except OSError as exc:
         return IntegrityResult(
             package="torch_npu",
             version=version,
@@ -180,7 +183,7 @@ def verify_torch_npu_integrity() -> IntegrityResult:
     )
 
 
-def verify_cann_libraries() -> List[IntegrityResult]:
+def verify_cann_libraries() -> list[IntegrityResult]:
     """Check that expected CANN shared libraries exist and are accessible.
 
     Verifies that the CANN toolkit libraries in ``ASCEND_HOME_PATH`` are
@@ -189,16 +192,18 @@ def verify_cann_libraries() -> List[IntegrityResult]:
     Returns:
         List of :class:`IntegrityResult` for each expected library.
     """
-    results: List[IntegrityResult] = []
+    results: list[IntegrityResult] = []
 
     cann_home = os.environ.get("ASCEND_HOME_PATH", "")
     if not cann_home:
-        results.append(IntegrityResult(
-            package="CANN",
-            version="",
-            status="warning",
-            message="ASCEND_HOME_PATH not set — cannot verify CANN libraries",
-        ))
+        results.append(
+            IntegrityResult(
+                package="CANN",
+                version="",
+                status="warning",
+                message="ASCEND_HOME_PATH not set — cannot verify CANN libraries",
+            )
+        )
         return results
 
     lib_dir = os.path.join(cann_home, "lib64")
@@ -207,42 +212,48 @@ def verify_cann_libraries() -> List[IntegrityResult]:
 
     for lib_name in _EXPECTED_CANN_LIBS:
         lib_path = os.path.join(lib_dir, lib_name) if os.path.isdir(lib_dir) else ""
-        details: Dict[str, str] = {"expected_path": lib_path}
+        details: dict[str, str] = {"expected_path": lib_path}
 
         if not lib_path or not os.path.isfile(lib_path):
-            results.append(IntegrityResult(
-                package=lib_name,
-                version="",
-                status="warning",
-                message=f"{lib_name} not found in {lib_dir}",
-                details=details,
-            ))
+            results.append(
+                IntegrityResult(
+                    package=lib_name,
+                    version="",
+                    status="warning",
+                    message=f"{lib_name} not found in {lib_dir}",
+                    details=details,
+                )
+            )
             continue
 
         file_size = os.path.getsize(lib_path)
         details["file_size"] = str(file_size)
 
         if file_size == 0:
-            results.append(IntegrityResult(
-                package=lib_name,
-                version="",
-                status="error",
-                message=f"{lib_name} exists but is empty (0 bytes)",
-                details=details,
-            ))
+            results.append(
+                IntegrityResult(
+                    package=lib_name,
+                    version="",
+                    status="error",
+                    message=f"{lib_name} exists but is empty (0 bytes)",
+                    details=details,
+                )
+            )
         else:
-            results.append(IntegrityResult(
-                package=lib_name,
-                version="",
-                status="ok",
-                message=f"{lib_name} present ({file_size} bytes)",
-                details=details,
-            ))
+            results.append(
+                IntegrityResult(
+                    package=lib_name,
+                    version="",
+                    status="ok",
+                    message=f"{lib_name} present ({file_size} bytes)",
+                    details=details,
+                )
+            )
 
     return results
 
 
-def full_security_check() -> List[IntegrityResult]:
+def full_security_check() -> list[IntegrityResult]:
     """Run all security checks.
 
     Returns:
@@ -253,7 +264,7 @@ def full_security_check() -> List[IntegrityResult]:
     return results
 
 
-def format_security_report(results: List[IntegrityResult]) -> str:
+def format_security_report(results: list[IntegrityResult]) -> str:
     """Format security check results as a human-readable report."""
     icons = {"ok": "[OK]", "warning": "[!!]", "error": "[XX]", "unknown": "[??]"}
     lines = ["cuda-morph security check", "=" * 50]

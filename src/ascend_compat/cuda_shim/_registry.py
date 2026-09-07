@@ -29,7 +29,7 @@ from __future__ import annotations
 
 import enum
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable
 
 from ascend_compat._logging import get_logger
 
@@ -39,8 +39,8 @@ logger = get_logger(__name__)
 class MappingKind(enum.Enum):
     """How a torch.cuda attribute maps to torch.npu."""
 
-    DIRECT = "direct"            # Identical semantics, no arg changes
-    ADAPTED = "adapted"          # Needs argument or return-value transformation
+    DIRECT = "direct"  # Identical semantics, no arg changes
+    ADAPTED = "adapted"  # Needs argument or return-value transformation
     UNSUPPORTED = "unsupported"  # No Ascend equivalent
 
 
@@ -61,7 +61,7 @@ class Mapping:
     cuda_name: str
     npu_name: str
     kind: MappingKind
-    adapter: Optional[Callable[..., Any]] = None
+    adapter: Callable[..., Any] | None = None
     note: str = ""
     min_torch_npu: str = "2.1.0"
 
@@ -71,7 +71,7 @@ class Mapping:
 # ---------------------------------------------------------------------------
 
 # fmt: off
-_MAPPINGS: List[Mapping] = [
+_MAPPINGS: list[Mapping] = [
     # ── Device management ─────────────────────────────────────────────
     Mapping("is_available",       "is_available",       MappingKind.DIRECT),
     Mapping("device_count",       "device_count",       MappingKind.DIRECT),
@@ -96,7 +96,8 @@ _MAPPINGS: List[Mapping] = [
             note="Output format differs from CUDA"),
     Mapping("mem_get_info",             "mem_get_info",             MappingKind.DIRECT,
             min_torch_npu="2.2.0"),
-    Mapping("set_per_process_memory_fraction", "set_per_process_memory_fraction", MappingKind.DIRECT),
+    Mapping("set_per_process_memory_fraction", "set_per_process_memory_fraction",
+            MappingKind.DIRECT),
     Mapping("memory_snapshot", "memory_snapshot", MappingKind.UNSUPPORTED,
             note="No Ascend equivalent. Use ascend_compat.doctor for memory profiling."),
 
@@ -139,7 +140,7 @@ _MAPPINGS: List[Mapping] = [
 
 
 # Build a lookup dict for fast access
-_REGISTRY: Dict[str, Mapping] = {m.cuda_name: m for m in _MAPPINGS}
+_REGISTRY: dict[str, Mapping] = {m.cuda_name: m for m in _MAPPINGS}
 
 
 # ---------------------------------------------------------------------------
@@ -147,7 +148,7 @@ _REGISTRY: Dict[str, Mapping] = {m.cuda_name: m for m in _MAPPINGS}
 # ---------------------------------------------------------------------------
 
 
-def get_mapping(cuda_attr: str) -> Optional[Mapping]:
+def get_mapping(cuda_attr: str) -> Mapping | None:
     """Look up the mapping for a torch.cuda attribute.
 
     Args:
@@ -159,7 +160,7 @@ def get_mapping(cuda_attr: str) -> Optional[Mapping]:
     return _REGISTRY.get(cuda_attr)
 
 
-def get_all_mappings() -> Dict[str, Mapping]:
+def get_all_mappings() -> dict[str, Mapping]:
     """Return the full registry as a dict.
 
     Returns:
@@ -168,17 +169,17 @@ def get_all_mappings() -> Dict[str, Mapping]:
     return dict(_REGISTRY)
 
 
-def get_direct_mappings() -> List[Mapping]:
+def get_direct_mappings() -> list[Mapping]:
     """Return all direct (1:1) mappings."""
     return [m for m in _MAPPINGS if m.kind == MappingKind.DIRECT]
 
 
-def get_adapted_mappings() -> List[Mapping]:
+def get_adapted_mappings() -> list[Mapping]:
     """Return all adapted (needs transformation) mappings."""
     return [m for m in _MAPPINGS if m.kind == MappingKind.ADAPTED]
 
 
-def get_unsupported() -> List[Mapping]:
+def get_unsupported() -> list[Mapping]:
     """Return all unsupported mappings."""
     return [m for m in _MAPPINGS if m.kind == MappingKind.UNSUPPORTED]
 

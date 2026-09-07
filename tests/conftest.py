@@ -40,8 +40,8 @@ def _reset_patch_manager() -> None:
     The PatchManager's internal state is cleared by reverting all patches
     and resetting the reference count.
     """
-    from ascend_compat.cuda_shim._monkey_patch import _manager
     from ascend_compat.cuda_shim._import_hook import uninstall_import_hook
+    from ascend_compat.cuda_shim._monkey_patch import _manager
 
     # Revert all patches (restores originals)
     _manager.revert_all()
@@ -69,11 +69,13 @@ def _reset_shim_state():
 @pytest.fixture
 def cpu_only_backend():
     """Simulate a CPU-only environment (no GPU, no NPU)."""
-    with patch("ascend_compat._backend.detect_backends",
-               return_value=(Backend.CPU,)) as mock_detect:
+    with patch(
+        "ascend_compat._backend.detect_backends", return_value=(Backend.CPU,)
+    ) as mock_detect:
         mock_detect.cache_clear = lambda: None
-        with patch("ascend_compat._backend.preferred_backend",
-                    return_value=Backend.CPU) as mock_pref:
+        with patch(
+            "ascend_compat._backend.preferred_backend", return_value=Backend.CPU
+        ) as mock_pref:
             mock_pref.cache_clear = lambda: None
             yield
 
@@ -81,11 +83,13 @@ def cpu_only_backend():
 @pytest.fixture
 def cuda_backend():
     """Simulate an NVIDIA CUDA environment."""
-    with patch("ascend_compat._backend.detect_backends",
-               return_value=(Backend.CUDA, Backend.CPU)) as mock_detect:
+    with patch(
+        "ascend_compat._backend.detect_backends", return_value=(Backend.CUDA, Backend.CPU)
+    ) as mock_detect:
         mock_detect.cache_clear = lambda: None
-        with patch("ascend_compat._backend.preferred_backend",
-                    return_value=Backend.CUDA) as mock_pref:
+        with patch(
+            "ascend_compat._backend.preferred_backend", return_value=Backend.CUDA
+        ) as mock_pref:
             mock_pref.cache_clear = lambda: None
             yield
 
@@ -93,11 +97,13 @@ def cuda_backend():
 @pytest.fixture
 def npu_backend():
     """Simulate an Ascend NPU environment."""
-    with patch("ascend_compat._backend.detect_backends",
-               return_value=(Backend.NPU, Backend.CPU)) as mock_detect:
+    with patch(
+        "ascend_compat._backend.detect_backends", return_value=(Backend.NPU, Backend.CPU)
+    ) as mock_detect:
         mock_detect.cache_clear = lambda: None
-        with patch("ascend_compat._backend.preferred_backend",
-                    return_value=Backend.NPU) as mock_pref:
+        with patch(
+            "ascend_compat._backend.preferred_backend", return_value=Backend.NPU
+        ) as mock_pref:
             mock_pref.cache_clear = lambda: None
             with patch("ascend_compat._backend.has_npu", return_value=True):
                 yield

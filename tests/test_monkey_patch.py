@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import torch
 
-from ascend_compat._backend import Backend
 from ascend_compat.cuda_shim._monkey_patch import (
     _make_proxy,
     _make_unsupported_stub,
@@ -37,6 +36,7 @@ class TestActivation:
     def test_no_patch_env_var(self, cpu_only_backend: None) -> None:
         """ASCEND_COMPAT_NO_PATCH=1 should skip activation."""
         import os
+
         old = os.environ.get("ASCEND_COMPAT_NO_PATCH")
         try:
             os.environ["ASCEND_COMPAT_NO_PATCH"] = "1"
@@ -102,11 +102,13 @@ class TestProxyAndStub:
         """Unsupported stubs should raise NotImplementedError."""
         stub = _make_unsupported_stub("fake_op", "Use alternative X")
         import pytest
+
         with pytest.raises(NotImplementedError, match="fake_op"):
             stub()
 
     def test_unsupported_stub_includes_note(self) -> None:
         stub = _make_unsupported_stub("fake_op", "Use alternative X")
         import pytest
+
         with pytest.raises(NotImplementedError, match="Use alternative X"):
             stub()

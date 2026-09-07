@@ -15,8 +15,8 @@ from __future__ import annotations
 
 import math
 import time
-from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, List, Optional
+from dataclasses import dataclass
+from typing import Callable
 
 import torch
 
@@ -68,6 +68,7 @@ class OperatorVerifier:
         seed: int = 42,
         dtype: torch.dtype = torch.float16,
     ) -> None:
+        """Set the target device, RNG seed, and comparison dtype."""
         self.device = device
         self.seed = seed
         self.dtype = dtype
@@ -102,9 +103,7 @@ class OperatorVerifier:
             a_flat.unsqueeze(0), e_flat.unsqueeze(0)
         ).item()
 
-        passed = max_abs <= atol or (
-            max_abs <= rtol * expected_f.abs().max().item() + atol
-        )
+        passed = max_abs <= atol or (max_abs <= rtol * expected_f.abs().max().item() + atol)
 
         return VerificationResult(
             op_name="",  # Caller fills this in
@@ -147,9 +146,7 @@ class OperatorVerifier:
         # Our shim on device
         start = time.perf_counter()
         try:
-            npu_output = flash_attn_func(
-                self._to_device(q), self._to_device(k), self._to_device(v)
-            )
+            npu_output = flash_attn_func(self._to_device(q), self._to_device(k), self._to_device(v))
         except Exception as e:
             return VerificationResult(
                 op_name="flash_attn_func",
@@ -199,7 +196,9 @@ class OperatorVerifier:
         start = time.perf_counter()
         try:
             npu_output = flash_attn_func(
-                self._to_device(q), self._to_device(k), self._to_device(v),
+                self._to_device(q),
+                self._to_device(k),
+                self._to_device(v),
                 causal=True,
             )
         except Exception as e:
@@ -227,14 +226,16 @@ class OperatorVerifier:
         a = torch.randn(64, 128, dtype=self.dtype)
         b = torch.randn(128, 64, dtype=self.dtype)
 
-        ref = (a.float() @ b.float())
+        ref = a.float() @ b.float()
 
         start = time.perf_counter()
         try:
             out = self._to_device(a) @ self._to_device(b)
         except Exception as e:
             return VerificationResult(
-                op_name="matmul", passed=False, device=self.device,
+                op_name="matmul",
+                passed=False,
+                device=self.device,
                 error_message=str(e),
             )
         elapsed = (time.perf_counter() - start) * 1000
@@ -259,7 +260,9 @@ class OperatorVerifier:
             out = torch.softmax(self._to_device(x), dim=-1)
         except Exception as e:
             return VerificationResult(
-                op_name="softmax", passed=False, device=self.device,
+                op_name="softmax",
+                passed=False,
+                device=self.device,
                 error_message=str(e),
             )
         elapsed = (time.perf_counter() - start) * 1000
@@ -286,7 +289,9 @@ class OperatorVerifier:
             out = ln_dev(self._to_device(x))
         except Exception as e:
             return VerificationResult(
-                op_name="LayerNorm", passed=False, device=self.device,
+                op_name="LayerNorm",
+                passed=False,
+                device=self.device,
                 error_message=str(e),
             )
         elapsed = (time.perf_counter() - start) * 1000
@@ -303,9 +308,9 @@ class OperatorVerifier:
     # Run all verifications
     # -------------------------------------------------------------------
 
-    def run_all(self) -> List[VerificationResult]:
+    def run_all(self) -> list[VerificationResult]:
         """Run all operator verifications and return results."""
-        checks: List[Callable[[], VerificationResult]] = [
+        checks: list[Callable[[], VerificationResult]] = [
             self.verify_matmul,
             self.verify_softmax,
             self.verify_layer_norm,
@@ -321,13 +326,16 @@ class OperatorVerifier:
             status = "PASS" if result.passed else "FAIL"
             logger.info(
                 "  [%s] %s: max_err=%.6f, cos_sim=%.6f",
-                status, result.op_name, result.max_abs_error, result.cosine_similarity,
+                status,
+                result.op_name,
+                result.max_abs_error,
+                result.cosine_similarity,
             )
 
         return results
 
     @staticmethod
-    def format_report(results: List[VerificationResult]) -> str:
+    def format_report(results: list[VerificationResult]) -> str:
         """Format verification results as a human-readable report."""
         lines = [
             "Operator Verification Report",

@@ -96,6 +96,16 @@ import warnings
 __version__ = "0.9.0"
 
 # Core infrastructure (always available — no side effects)
+# ---------------------------------------------------------------------------
+# Backward compatibility: deprecation warning for v0.2.x users
+# ---------------------------------------------------------------------------
+# In v0.2.x, `import ascend_compat` auto-activated the shim.  We removed that
+# in v0.3.0+ because library imports shouldn't have global side effects.
+# Emit a one-time deprecation warning if the user appears to be relying on
+# the old behavior (i.e. they imported us but haven't called activate()).
+import atexit as _atexit
+import sys as _sys
+
 from ascend_compat._backend import (
     Backend,
     detect_backends,
@@ -117,17 +127,6 @@ from ascend_compat.cuda_shim import (
     is_activated,
     reset_patch_stats,
 )
-
-# ---------------------------------------------------------------------------
-# Backward compatibility: deprecation warning for v0.2.x users
-# ---------------------------------------------------------------------------
-# In v0.2.x, `import ascend_compat` auto-activated the shim.  We removed that
-# in v0.3.0+ because library imports shouldn't have global side effects.
-# Emit a one-time deprecation warning if the user appears to be relying on
-# the old behavior (i.e. they imported us but haven't called activate()).
-
-import atexit as _atexit
-import sys as _sys
 
 
 def _check_activation_at_exit() -> None:
@@ -156,7 +155,7 @@ def _check_activation_at_exit() -> None:
                 with open(src) as f:
                     content = f.read()
                 import_in_main = "ascend_compat" in content
-            except (OSError, IOError):
+            except OSError:
                 pass
 
     if import_in_main:

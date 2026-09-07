@@ -22,7 +22,6 @@ With double-buffering (ping-pong) to hide DMA latency.
 from __future__ import annotations
 
 import os
-from typing import Dict
 
 from ascend_compat._logging import get_logger
 from ascend_compat.kernel_helper.spec import OpSpec
@@ -30,7 +29,7 @@ from ascend_compat.kernel_helper.spec import OpSpec
 logger = get_logger(__name__)
 
 
-def scaffold(spec: OpSpec, output_dir: str) -> Dict[str, str]:
+def scaffold(spec: OpSpec, output_dir: str) -> dict[str, str]:
     """Generate all files for an Ascend C operator project.
 
     Args:
@@ -40,11 +39,11 @@ def scaffold(spec: OpSpec, output_dir: str) -> Dict[str, str]:
     Returns:
         Dict mapping relative file paths to their generated contents.
     """
-    files: Dict[str, str] = {}
+    files: dict[str, str] = {}
 
     name = spec.name
     name_lower = name.lower()
-    name_upper = name.upper()
+    name.upper()
 
     # ── Tiling header ────────────────────────────────────────────────
     files[f"op_host/{name_lower}_tiling.h"] = _gen_tiling_header(spec)
@@ -71,7 +70,9 @@ def scaffold(spec: OpSpec, output_dir: str) -> Dict[str, str]:
 
     logger.info(
         "Scaffolded Ascend C operator '%s' → %s (%d files)",
-        name, output_dir, len(files),
+        name,
+        output_dir,
+        len(files),
     )
 
     return files
@@ -126,10 +127,10 @@ def _gen_host_impl(spec: OpSpec) -> str:
     io_lines = []
     for i, (tname, dtype) in enumerate(spec.inputs):
         cann_dtype = _to_cann_dtype(dtype)
-        io_lines.append(f'    .INPUT(({tname}), TensorType({{DT_{cann_dtype}}}))  // input {i}')
+        io_lines.append(f"    .INPUT(({tname}), TensorType({{DT_{cann_dtype}}}))  // input {i}")
     for i, (tname, dtype) in enumerate(spec.outputs):
         cann_dtype = _to_cann_dtype(dtype)
-        io_lines.append(f'    .OUTPUT(({tname}), TensorType({{DT_{cann_dtype}}}))  // output {i}')
+        io_lines.append(f"    .OUTPUT(({tname}), TensorType({{DT_{cann_dtype}}}))  // output {i}")
 
     io_block = "\n".join(io_lines)
 
@@ -250,13 +251,9 @@ def _gen_kernel_impl(spec: OpSpec) -> str:
     # Build member declarations
     member_lines = []
     for tname, dtype in spec.inputs:
-        member_lines.append(
-            f"    GlobalTensor<{_to_cpp_type(dtype)}> {tname}Gm_;"
-        )
+        member_lines.append(f"    GlobalTensor<{_to_cpp_type(dtype)}> {tname}Gm_;")
     for tname, dtype in spec.outputs:
-        member_lines.append(
-            f"    GlobalTensor<{_to_cpp_type(dtype)}> {tname}Gm_;"
-        )
+        member_lines.append(f"    GlobalTensor<{_to_cpp_type(dtype)}> {tname}Gm_;")
     members_block = "\n".join(member_lines)
 
     # Pattern-specific compute body
@@ -268,6 +265,9 @@ def _gen_kernel_impl(spec: OpSpec) -> str:
         compute_body = _gen_matmul_compute(spec)
     else:
         compute_body = _gen_custom_compute(spec)
+
+    in_type = _to_cpp_type(spec.inputs[0][1])
+    out_type = _to_cpp_type(spec.outputs[0][1])
 
     return f"""\
 // Device-side kernel for {name} operator.
@@ -319,8 +319,8 @@ public:
         // Allocate double-buffer queues for pipeline stages
         // VECIN_QUEUE / VECOUT_QUEUE are Ascend's queue identifiers
         // for the Vector pipeline
-        pipe_.InitBuffer(inQueue_, 2, tileLength_ * sizeof({_to_cpp_type(spec.inputs[0][1])}));
-        pipe_.InitBuffer(outQueue_, 2, tileLength_ * sizeof({_to_cpp_type(spec.outputs[0][1])}));
+        pipe_.InitBuffer(inQueue_, 2, tileLength_ * sizeof({in_type}));
+        pipe_.InitBuffer(outQueue_, 2, tileLength_ * sizeof({out_type}));
     }}
 
     // ═══════════════════════════════════════════════════════════════
@@ -337,7 +337,7 @@ public:
 private:
     // ─── Stage 1: CopyIn (HBM → Local Memory via DMA) ───────────
     __aicore__ inline void CopyIn(uint32_t tileIdx) {{
-        LocalTensor<{_to_cpp_type(spec.inputs[0][1])}> inLocal = inQueue_.AllocTensor<{_to_cpp_type(spec.inputs[0][1])}>();
+        LocalTensor<{in_type}> inLocal = inQueue_.AllocTensor<{in_type}>();
         uint32_t len = (tileIdx == tileNum_ - 1) ? lastTileLength_ : tileLength_;
         DataCopy(inLocal, {spec.inputs[0][0]}Gm_[tileIdx * tileLength_], len);
         inQueue_.EnQue(inLocal);
@@ -350,7 +350,7 @@ private:
 
     // ─── Stage 3: CopyOut (Local Memory → HBM via DMA) ──────────
     __aicore__ inline void CopyOut(uint32_t tileIdx) {{
-        LocalTensor<{_to_cpp_type(spec.outputs[0][1])}> outLocal = outQueue_.DeQue<{_to_cpp_type(spec.outputs[0][1])}>();
+        LocalTensor<{out_type}> outLocal = outQueue_.DeQue<{out_type}>();
         uint32_t len = (tileIdx == tileNum_ - 1) ? lastTileLength_ : tileLength_;
         DataCopy({spec.outputs[0][0]}Gm_[tileIdx * tileLength_], outLocal, len);
         outQueue_.FreeTensor(outLocal);
@@ -580,7 +580,7 @@ def _gen_readme(spec: OpSpec) -> str:
     return f"""\
 # {name} — Ascend C Custom Operator
 
-{spec.description or f'Custom {spec.pattern} operator for Ascend NPU.'}
+{spec.description or f"Custom {spec.pattern} operator for Ascend NPU."}
 
 ## Architecture
 
@@ -646,6 +646,7 @@ result = torch.ops.custom.{name.lower()}(input_tensor)
 # ---------------------------------------------------------------------------
 # Type mapping helpers
 # ---------------------------------------------------------------------------
+
 
 def _to_cpp_type(dtype: str) -> str:
     """Map Python dtype string to C++ type."""

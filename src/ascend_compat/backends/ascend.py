@@ -12,8 +12,6 @@ Adapter: torch_npu (https://gitee.com/ascend/pytorch)
 
 from __future__ import annotations
 
-from typing import Optional
-
 from ascend_compat.backends.registry import BackendInfo
 
 
@@ -32,8 +30,9 @@ class AscendBackend(BackendInfo):
     def is_available() -> bool:
         """Check if Ascend NPU hardware is present and torch_npu works."""
         try:
-            import torch_npu  # type: ignore[import-untyped]  # noqa: F401
             import torch
+            import torch_npu  # type: ignore[import-untyped]  # noqa: F401
+
             return hasattr(torch, "npu") and torch.npu.is_available()
         except Exception:
             return False
@@ -43,6 +42,7 @@ class AscendBackend(BackendInfo):
         """Return number of Ascend NPU devices."""
         try:
             import torch
+
             if hasattr(torch, "npu"):
                 return torch.npu.device_count()
         except Exception:
@@ -54,6 +54,7 @@ class AscendBackend(BackendInfo):
         """Return the Ascend NPU model name."""
         try:
             import torch
+
             if hasattr(torch, "npu"):
                 return torch.npu.get_device_name(index)
         except Exception:

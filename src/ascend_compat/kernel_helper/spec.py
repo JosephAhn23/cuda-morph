@@ -10,27 +10,32 @@ the spec to generate all required files.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Dict, List, Literal, Optional, Tuple
-
 
 # Ascend C supports these data types in the Cube and Vector units
-SUPPORTED_DTYPES = frozenset({
-    "float16", "fp16",
-    "float32", "fp32",
-    "bfloat16", "bf16",
-    "int8",
-    "int32",
-    "int16",
-    "uint8",
-})
+SUPPORTED_DTYPES = frozenset(
+    {
+        "float16",
+        "fp16",
+        "float32",
+        "fp32",
+        "bfloat16",
+        "bf16",
+        "int8",
+        "int32",
+        "int16",
+        "uint8",
+    }
+)
 
 # Patterns map to different code generation templates
-SUPPORTED_PATTERNS = frozenset({
-    "elementwise",   # y = f(x)  — per-element, Vector unit
-    "reduction",     # y = reduce(x, dim)  — Vector unit
-    "matmul",        # C = A @ B  — Cube unit (16×16×16 MAC)
-    "custom",        # User provides their own compute body
-})
+SUPPORTED_PATTERNS = frozenset(
+    {
+        "elementwise",  # y = f(x)  — per-element, Vector unit
+        "reduction",  # y = reduce(x, dim)  — Vector unit
+        "matmul",  # C = A @ B  — Cube unit (16×16×16 MAC)
+        "custom",  # User provides their own compute body
+    }
+)
 
 
 @dataclass
@@ -52,10 +57,10 @@ class OpSpec:
     """
 
     name: str
-    inputs: List[Tuple[str, str]]
-    outputs: List[Tuple[str, str]]
+    inputs: list[tuple[str, str]]
+    outputs: list[tuple[str, str]]
     pattern: str = "elementwise"
-    attrs: Dict[str, str] = field(default_factory=dict)
+    attrs: dict[str, str] = field(default_factory=dict)
     workspace_bytes: int = 0
     description: str = ""
     alignment: int = 32
@@ -74,15 +79,14 @@ class OpSpec:
 
         if self.pattern not in SUPPORTED_PATTERNS:
             raise ValueError(
-                f"Unknown pattern '{self.pattern}'. "
-                f"Supported: {sorted(SUPPORTED_PATTERNS)}"
+                f"Unknown pattern '{self.pattern}'. Supported: {sorted(SUPPORTED_PATTERNS)}"
             )
 
         for label, tensors in [("inputs", self.inputs), ("outputs", self.outputs)]:
             if not tensors:
                 raise ValueError(f"OpSpec must have at least one {label}")
             for tname, dtype in tensors:
-                norm_dtype = dtype.lower().replace("float", "fp").replace("bfloat", "bf")
+                dtype.lower().replace("float", "fp").replace("bfloat", "bf")
                 # Normalize common aliases
                 canonical = dtype.lower()
                 if canonical not in SUPPORTED_DTYPES:
@@ -98,7 +102,7 @@ class OpSpec:
             )
 
     @property
-    def all_tensors(self) -> List[Tuple[str, str]]:
+    def all_tensors(self) -> list[tuple[str, str]]:
         """All input and output tensors."""
         return list(self.inputs) + list(self.outputs)
 
@@ -112,7 +116,7 @@ class OpSpec:
         """Whether this operator uses the Vector unit."""
         return self.pattern in ("elementwise", "reduction", "custom")
 
-    def to_dict(self) -> Dict:
+    def to_dict(self) -> dict:
         """Serialize to a dict (useful for templates)."""
         return {
             "name": self.name,

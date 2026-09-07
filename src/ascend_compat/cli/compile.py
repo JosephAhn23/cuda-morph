@@ -8,7 +8,7 @@ import click
 @click.command("compile")
 def compile_cmd() -> None:
     """Show torch.compile backend info for Ascend."""
-    from ascend_compat.cuda_shim.compile_helpers import get_compile_info, CompatibilityPolicy
+    from ascend_compat.cuda_shim.compile_helpers import CompatibilityPolicy, get_compile_info
 
     info = get_compile_info()
     click.echo("torch.compile configuration for Ascend:")
@@ -20,6 +20,7 @@ def compile_cmd() -> None:
     try:
         is_tested = CompatibilityPolicy.check_forward_compat(policy="silent")
         from ascend_compat.cuda_shim.compile_helpers import LATEST_TESTED_VERSION
+
         tested_str = ".".join(str(v) for v in LATEST_TESTED_VERSION)
         click.echo(f"  Latest tested PyTorch: {tested_str}")
         click.echo(f"  Version in range:     {'yes' if is_tested else 'no (untested version)'}")

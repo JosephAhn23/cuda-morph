@@ -4,11 +4,6 @@ from __future__ import annotations
 
 import warnings
 
-from ascend_compat.doctor.version_check import (
-    CheckResult,
-    check_versions,
-    format_report,
-)
 from ascend_compat.doctor.error_codes import (
     format_error,
     get_all_codes,
@@ -19,6 +14,10 @@ from ascend_compat.doctor.fallback_monitor import (
     FallbackMonitor,
     FallbackReport,
     _extract_op_name,
+)
+from ascend_compat.doctor.version_check import (
+    check_versions,
+    format_report,
 )
 
 
@@ -134,7 +133,6 @@ class TestFallbackMonitor:
         assert "aten::_unique2" in monitor.report.stats
 
     def test_monitor_counts_multiple(self) -> None:
-        import importlib
 
         with FallbackMonitor() as monitor:
             for i in range(5):
@@ -156,17 +154,14 @@ class TestFallbackMonitor:
 
     def test_report_summary_with_fallbacks(self) -> None:
         from ascend_compat.doctor.fallback_monitor import FallbackStats
+
         report = FallbackReport(
             total_fallbacks=10,
             unique_ops=2,
             monitoring_duration_s=5.0,
             stats={
-                "aten::histc": FallbackStats(
-                    op_name="aten::histc", call_count=7
-                ),
-                "aten::_unique2": FallbackStats(
-                    op_name="aten::_unique2", call_count=3
-                ),
+                "aten::histc": FallbackStats(op_name="aten::histc", call_count=7),
+                "aten::_unique2": FallbackStats(op_name="aten::_unique2", call_count=3),
             },
         )
         summary = report.summary()

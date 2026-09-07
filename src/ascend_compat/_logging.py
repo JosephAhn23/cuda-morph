@@ -16,8 +16,6 @@ from __future__ import annotations
 import logging
 import os
 import sys
-from typing import Optional
-
 
 # ---------------------------------------------------------------------------
 # Module-level constants
@@ -101,7 +99,7 @@ def get_logger(name: str) -> logging.Logger:
     return logging.getLogger(name)
 
 
-def set_log_level(level: Optional[str] = None) -> None:
+def set_log_level(level: str | None = None) -> None:
     """Programmatically change the shim's log level at runtime.
 
     This is a convenience for interactive sessions (Jupyter notebooks, REPL)

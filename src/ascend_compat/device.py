@@ -27,14 +27,14 @@ def _get_backend_module() -> Any:
     """Return the torch device module for the preferred backend (torch.npu, torch.cuda, etc.)."""
     torch = get_torch()
     backend = preferred_backend()
-    _MODULE_MAP = {
+    module_map = {
         Backend.NPU: lambda: getattr(torch, "npu", None),
         Backend.MLU: lambda: getattr(torch, "mlu", None),
         Backend.XPU: lambda: getattr(torch, "xpu", None),
         Backend.ROCM: lambda: torch.cuda,
         Backend.CUDA: lambda: torch.cuda,
     }
-    getter = _MODULE_MAP.get(backend)
+    getter = module_map.get(backend)
     return getter() if getter else None
 
 
@@ -93,6 +93,7 @@ def get_device_string() -> str:
     Returns ``"npu"``, ``"cuda"``, ``"xpu"``, ``"mlu"``, or ``"cpu"``.
     """
     from ascend_compat._backend import translate_device_string
+
     return translate_device_string("cuda")
 
 
@@ -110,13 +111,14 @@ def to_device(obj: Any, device: Any = None) -> Any:
         The object moved to the target device.
     """
     torch = get_torch()
-    backend = preferred_backend()
+    preferred_backend()
 
     if device is None:
         device = get_device_string()
 
     if isinstance(device, str) and device.startswith("cuda"):
         from ascend_compat._backend import translate_device_string
+
         device = translate_device_string(device)
 
     if isinstance(obj, torch.Tensor):

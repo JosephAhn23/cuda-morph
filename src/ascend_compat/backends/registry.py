@@ -12,7 +12,7 @@ backend *must* implement.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 
 class BackendInfo(ABC):
@@ -77,10 +77,7 @@ class BackendInfo(ABC):
     def __init_subclass__(cls, **kwargs: Any) -> None:
         """Validate that required fields are set on every subclass."""
         super().__init_subclass__(**kwargs)
-        missing = [
-            f for f in cls._REQUIRED_FIELDS
-            if not getattr(cls, f, "")
-        ]
+        missing = [f for f in cls._REQUIRED_FIELDS if not getattr(cls, f, "")]
         if missing:
             raise TypeError(
                 f"Backend '{cls.__name__}' must define: {', '.join(missing)}. "
@@ -112,17 +109,18 @@ class BackendInfo(ABC):
         ...
 
     @classmethod
-    def get_adapter_version(cls) -> Optional[str]:
+    def get_adapter_version(cls) -> str | None:
         """Return the installed adapter version, or None if not installed."""
         try:
             import importlib
+
             mod = importlib.import_module(cls.adapter_module)
             return getattr(mod, "__version__", "unknown")
         except ImportError:
             return None
 
     @classmethod
-    def summary(cls) -> Dict[str, Any]:
+    def summary(cls) -> dict[str, Any]:
         """Return a dict summarizing this backend's status."""
         available = cls.is_available()
         return {

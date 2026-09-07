@@ -13,7 +13,6 @@ from ascend_compat.cuda_shim.dtype_manager import (
     apply_dtype_policy,
     check_dtype_support,
     get_substitution_map,
-    _unpatch_creation_fns,
 )
 
 

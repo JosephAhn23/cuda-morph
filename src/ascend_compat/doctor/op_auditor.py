@@ -30,7 +30,7 @@ from __future__ import annotations
 
 from collections import Counter
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any
 
 from ascend_compat._logging import get_logger
 
@@ -44,7 +44,7 @@ logger = get_logger(__name__)
 # Operators known to be unsupported or problematic on Ascend.
 # This list is sourced from community reports, CANN release notes, and
 # torch_npu issue trackers.
-_KNOWN_UNSUPPORTED_OPS: Set[str] = {
+_KNOWN_UNSUPPORTED_OPS: set[str] = {
     # No equivalent CANN kernel
     "aten::_unique2",
     "aten::unique_dim",
@@ -77,7 +77,7 @@ _KNOWN_UNSUPPORTED_OPS: Set[str] = {
 }
 
 # Operators that work but with known performance issues
-_KNOWN_SLOW_OPS: Dict[str, str] = {
+_KNOWN_SLOW_OPS: dict[str, str] = {
     "aten::nonzero": "Dynamic output shape causes device sync — prefer boolean masking",
     "aten::index_put_": "Scattered writes are slow on SIMD — prefer gather-based alternatives",
     "aten::scatter_": "Similar to index_put_ — batch operations preferred",
@@ -89,6 +89,7 @@ _KNOWN_SLOW_OPS: Dict[str, str] = {
 @dataclass
 class OpInfo:
     """Information about one operator discovered during audit."""
+
     name: str
     call_count: int = 0
     status: str = "native"  # "native", "fallback", "slow", "unknown"
@@ -98,13 +99,14 @@ class OpInfo:
 @dataclass
 class AuditReport:
     """Result of operator coverage audit."""
+
     model_name: str = ""
     total_ops: int = 0
     native_ops: int = 0
     fallback_ops: int = 0
     slow_ops: int = 0
     unknown_ops: int = 0
-    ops: Dict[str, OpInfo] = field(default_factory=dict)
+    ops: dict[str, OpInfo] = field(default_factory=dict)
 
     @property
     def coverage_pct(self) -> float:
@@ -167,8 +169,6 @@ def audit_model(
     Returns:
         :class:`AuditReport` with operator coverage analysis.
     """
-    import torch
-
     if not model_name:
         model_name = type(model).__name__
 
@@ -180,7 +180,11 @@ def audit_model(
     try:
         ops = _trace_with_fx(model, sample_input)
         op_counts.update(ops)
-        logger.debug("FX trace found %d operator calls (%d unique)", sum(op_counts.values()), len(op_counts))
+        logger.debug(
+            "FX trace found %d operator calls (%d unique)",
+            sum(op_counts.values()),
+            len(op_counts),
+        )
     except Exception as exc:
         logger.debug("FX trace failed (%s), falling back to hook-based tracing", exc)
         ops = _trace_with_hooks(model, sample_input)
@@ -212,13 +216,15 @@ def audit_model(
     report.total_ops = len(op_counts)
     logger.info(
         "Audit complete: %d ops, %.1f%% native, %d fallback",
-        report.total_ops, report.coverage_pct, report.fallback_ops,
+        report.total_ops,
+        report.coverage_pct,
+        report.fallback_ops,
     )
 
     return report
 
 
-def _trace_with_fx(model: Any, sample_input: Any) -> List[str]:
+def _trace_with_fx(model: Any, sample_input: Any) -> list[str]:
     """Trace operator calls using torch.fx.
 
     torch.fx does symbolic tracing — it walks the model's code and records
@@ -229,7 +235,7 @@ def _trace_with_fx(model: Any, sample_input: Any) -> List[str]:
     import torch.fx
 
     traced = torch.fx.symbolic_trace(model)
-    ops: List[str] = []
+    ops: list[str] = []
 
     for node in traced.graph.nodes:
         if node.op == "call_function":
@@ -252,7 +258,7 @@ def _trace_with_fx(model: Any, sample_input: Any) -> List[str]:
     return ops
 
 
-def _trace_with_hooks(model: Any, sample_input: Any) -> List[str]:
+def _trace_with_hooks(model: Any, sample_input: Any) -> list[str]:
     """Trace operator calls using forward hooks.
 
     Fallback approach when FX tracing fails.  This actually executes
@@ -260,12 +266,13 @@ def _trace_with_hooks(model: Any, sample_input: Any) -> List[str]:
     """
     import torch
 
-    ops: List[str] = []
+    ops: list[str] = []
     hooks = []
 
     def _make_hook(name: str) -> Any:
         def hook(module: Any, input: Any, output: Any) -> None:
             ops.append(f"nn.{type(module).__name__}")
+
         return hook
 
     # Register hooks on all modules

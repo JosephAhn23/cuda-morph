@@ -87,7 +87,7 @@ class TestReferenceCount:
         mgr.increment_ref()
         mgr.increment_ref()
         assert mgr.decrement_ref() is False  # Still at 1
-        assert mgr.decrement_ref() is True   # Now at 0
+        assert mgr.decrement_ref() is True  # Now at 0
 
     def test_decrement_below_zero_returns_false(self, mgr):
         assert mgr.decrement_ref() is False
@@ -271,6 +271,7 @@ class TestActivateDeactivateIntegration:
     def test_activate_deactivate_preserves_originals(self):
         """After activate → deactivate, torch.cuda.is_available should work."""
         import torch
+
         from ascend_compat.cuda_shim._monkey_patch import activate, deactivate
 
         original_fn = torch.cuda.is_available
@@ -301,8 +302,12 @@ class TestActivateDeactivateIntegration:
     def test_stats_after_activation(self):
         """Patch stats should be available after activation."""
         import torch
+
         from ascend_compat.cuda_shim._monkey_patch import (
-            activate, deactivate, get_patch_stats, reset_patch_stats,
+            activate,
+            deactivate,
+            get_patch_stats,
+            reset_patch_stats,
         )
 
         activate()

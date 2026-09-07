@@ -27,7 +27,7 @@ from __future__ import annotations
 
 import importlib
 import sys
-from typing import Any, Optional, Sequence
+from typing import Any, Sequence
 
 from ascend_compat._logging import get_logger
 
@@ -47,8 +47,8 @@ class _AscendCompatFinder:
         self._processing = False  # re-entrancy guard
 
     def find_module(
-        self, fullname: str, path: Optional[Sequence[str]] = None
-    ) -> Optional["_AscendCompatFinder"]:
+        self, fullname: str, path: Sequence[str] | None = None
+    ) -> _AscendCompatFinder | None:
         """Called by Python's import system for every import statement.
 
         We only intercept ``torch.cuda`` and its submodules.
@@ -91,6 +91,7 @@ def _ensure_torch_npu() -> None:
 
     try:
         import torch_npu  # type: ignore[import-untyped]  # noqa: F401
+
         logger.debug("torch_npu imported via import hook — PrivateUse1 backend registered")
     except ImportError:
         logger.debug("torch_npu not available — import hook is a no-op")

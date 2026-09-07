@@ -44,7 +44,7 @@ import platform
 import sys
 import time
 from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable
 
 from ascend_compat._logging import get_logger
 
@@ -66,7 +66,7 @@ __all__ = [
 # ---------------------------------------------------------------------------
 
 
-def get_system_fingerprint() -> Dict[str, Any]:
+def get_system_fingerprint() -> dict[str, Any]:
     """Return immutable system identifier for benchmark comparison.
 
     Includes hardware model, software versions, and OS info so benchmark
@@ -76,12 +76,15 @@ def get_system_fingerprint() -> Dict[str, Any]:
         Dict with keys like ``npu_model``, ``torch_version``, etc.
     """
     import torch
+
     from ascend_compat import __version__
 
-    fp: Dict[str, Any] = {
+    fp: dict[str, Any] = {
         "ascend_compat_version": __version__,
         "torch_version": torch.__version__,
-        "python_version": f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}",
+        "python_version": (
+            f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
+        ),
         "os": platform.platform(),
         "cpu": platform.processor() or platform.machine(),
     }
@@ -115,6 +118,7 @@ def get_system_fingerprint() -> Dict[str, Any]:
 @dataclass
 class BenchResult:
     """Result of a single benchmark measurement."""
+
     name: str
     iterations: int
     total_seconds: float
@@ -123,15 +127,17 @@ class BenchResult:
 
     @property
     def calls_per_second(self) -> float:
+        """Calls per second, derived from iterations and total_seconds."""
         return self.iterations / self.total_seconds if self.total_seconds > 0 else 0
 
 
 @dataclass
 class BenchReport:
     """Collection of benchmark results."""
+
     title: str
-    results: List[BenchResult] = field(default_factory=list)
-    metadata: Dict[str, str] = field(default_factory=dict)
+    results: list[BenchResult] = field(default_factory=list)
+    metadata: dict[str, str] = field(default_factory=dict)
 
     def report(self) -> str:
         """Human-readable benchmark report."""
@@ -152,7 +158,8 @@ class BenchReport:
 
         for r in sorted(self.results, key=lambda x: x.per_call_us):
             lines.append(
-                f"  {r.name:<35} {r.per_call_us:>13.2f} {r.calls_per_second:>12.0f} {r.iterations:>8}"
+                f"  {r.name:<35} {r.per_call_us:>13.2f} "
+                f"{r.calls_per_second:>12.0f} {r.iterations:>8}"
             )
 
         lines.append(f"{'=' * 70}")
@@ -178,12 +185,19 @@ class BenchReport:
         writer = csv.writer(output)
         writer.writerow(["operation", "device", "per_call_us", "calls_per_sec", "iterations"])
         for r in self.results:
-            writer.writerow([r.name, r.device, f"{r.per_call_us:.2f}",
-                             f"{r.calls_per_second:.0f}", r.iterations])
+            writer.writerow(
+                [
+                    r.name,
+                    r.device,
+                    f"{r.per_call_us:.2f}",
+                    f"{r.calls_per_second:.0f}",
+                    r.iterations,
+                ]
+            )
         return output.getvalue()
 
 
-def _timeit(fn: Callable[[], Any], iterations: int = 10000, warmup: int = 100) -> Tuple[float, int]:
+def _timeit(fn: Callable[[], Any], iterations: int = 10000, warmup: int = 100) -> tuple[float, int]:
     """Time a callable, returning (total_seconds, iterations)."""
     # Warmup
     for _ in range(warmup):
@@ -211,10 +225,13 @@ class ShimOverheadBench:
     """
 
     def __init__(self, iterations: int = 50000) -> None:
+        """Set the number of iterations to run."""
         self.iterations = iterations
 
     def run(self) -> BenchReport:
+        """Run the benchmark and return a populated BenchReport."""
         import torch
+
         report = BenchReport(
             title="Shim Overhead Benchmark",
             metadata={
@@ -228,36 +245,42 @@ class ShimOverheadBench:
         original_fn = torch.cuda.is_available
 
         elapsed, iters = _timeit(original_fn, self.iterations)
-        report.results.append(BenchResult(
-            name="torch.cuda.is_available (direct)",
-            iterations=iters,
-            total_seconds=elapsed,
-            per_call_us=(elapsed / iters) * 1e6,
-            device="cpu",
-        ))
+        report.results.append(
+            BenchResult(
+                name="torch.cuda.is_available (direct)",
+                iterations=iters,
+                total_seconds=elapsed,
+                per_call_us=(elapsed / iters) * 1e6,
+                device="cpu",
+            )
+        )
 
         # Benchmark 2: A simple lambda proxy (simulates shim overhead)
         def _proxy_fn() -> bool:
             return original_fn()
 
         elapsed, iters = _timeit(_proxy_fn, self.iterations)
-        report.results.append(BenchResult(
-            name="proxy wrapper (1 indirection)",
-            iterations=iters,
-            total_seconds=elapsed,
-            per_call_us=(elapsed / iters) * 1e6,
-            device="cpu",
-        ))
+        report.results.append(
+            BenchResult(
+                name="proxy wrapper (1 indirection)",
+                iterations=iters,
+                total_seconds=elapsed,
+                per_call_us=(elapsed / iters) * 1e6,
+                device="cpu",
+            )
+        )
 
         # Benchmark 3: torch.device("cpu") — baseline
         elapsed, iters = _timeit(lambda: torch.device("cpu"), self.iterations)
-        report.results.append(BenchResult(
-            name="torch.device('cpu') baseline",
-            iterations=iters,
-            total_seconds=elapsed,
-            per_call_us=(elapsed / iters) * 1e6,
-            device="cpu",
-        ))
+        report.results.append(
+            BenchResult(
+                name="torch.device('cpu') baseline",
+                iterations=iters,
+                total_seconds=elapsed,
+                per_call_us=(elapsed / iters) * 1e6,
+                device="cpu",
+            )
+        )
 
         # Benchmark 4: String manipulation overhead (simulates cuda→npu rewrite)
         def _device_with_replace() -> Any:
@@ -265,23 +288,27 @@ class ShimOverheadBench:
             return torch.device(s.replace("cuda", "cpu", 1))
 
         elapsed, iters = _timeit(_device_with_replace, self.iterations)
-        report.results.append(BenchResult(
-            name="torch.device + string replace",
-            iterations=iters,
-            total_seconds=elapsed,
-            per_call_us=(elapsed / iters) * 1e6,
-            device="cpu",
-        ))
+        report.results.append(
+            BenchResult(
+                name="torch.device + string replace",
+                iterations=iters,
+                total_seconds=elapsed,
+                per_call_us=(elapsed / iters) * 1e6,
+                device="cpu",
+            )
+        )
 
         # Benchmark 5: torch.empty (small tensor creation) baseline
         elapsed, iters = _timeit(lambda: torch.empty(1), self.iterations)
-        report.results.append(BenchResult(
-            name="torch.empty(1) baseline",
-            iterations=iters,
-            total_seconds=elapsed,
-            per_call_us=(elapsed / iters) * 1e6,
-            device="cpu",
-        ))
+        report.results.append(
+            BenchResult(
+                name="torch.empty(1) baseline",
+                iterations=iters,
+                total_seconds=elapsed,
+                per_call_us=(elapsed / iters) * 1e6,
+                device="cpu",
+            )
+        )
 
         return report
 
@@ -299,10 +326,12 @@ class OpLatencyBench:
     """
 
     def __init__(self, device: str = "cpu", iterations: int = 1000) -> None:
+        """Set the target device and number of iterations."""
         self.device = device
         self.iterations = iterations
 
     def run(self) -> BenchReport:
+        """Run the benchmark and return a populated BenchReport."""
         import torch
 
         dev = self.device
@@ -399,22 +428,26 @@ class OpLatencyBench:
         for name, fn in benchmarks:
             try:
                 elapsed, iters = _timeit(fn, self.iterations, warmup=min(50, self.iterations))
-                report.results.append(BenchResult(
-                    name=name,
-                    iterations=iters,
-                    total_seconds=elapsed,
-                    per_call_us=(elapsed / iters) * 1e6,
-                    device=dev,
-                ))
+                report.results.append(
+                    BenchResult(
+                        name=name,
+                        iterations=iters,
+                        total_seconds=elapsed,
+                        per_call_us=(elapsed / iters) * 1e6,
+                        device=dev,
+                    )
+                )
             except Exception as exc:  # noqa: BLE001
                 logger.warning("Benchmark '%s' failed: %s", name, exc)
-                report.results.append(BenchResult(
-                    name=f"{name} [FAILED: {exc}]",
-                    iterations=0,
-                    total_seconds=0,
-                    per_call_us=0,
-                    device=dev,
-                ))
+                report.results.append(
+                    BenchResult(
+                        name=f"{name} [FAILED: {exc}]",
+                        iterations=0,
+                        total_seconds=0,
+                        per_call_us=0,
+                        device=dev,
+                    )
+                )
 
         return report
 
@@ -439,6 +472,7 @@ class ModelThroughputBench:
         warmup: int = 10,
         batch_size: int = 1,
     ) -> None:
+        """Set the model, input factory, device, and run parameters."""
         self.model = model
         self.input_fn = input_fn
         self.device = device
@@ -447,6 +481,7 @@ class ModelThroughputBench:
         self.batch_size = batch_size
 
     def run(self) -> BenchReport:
+        """Run forward passes and return samples/sec + latency stats."""
         import torch
 
         dev = torch.device(self.device)
@@ -480,7 +515,7 @@ class ModelThroughputBench:
                 _sync()
 
         # Timed runs
-        latencies: List[float] = []
+        latencies: list[float] = []
         with torch.no_grad():
             for _ in range(self.iterations):
                 inp = self.input_fn()
@@ -503,20 +538,24 @@ class ModelThroughputBench:
         p95 = latencies_sorted[int(len(latencies_sorted) * 0.95)]
         p99 = latencies_sorted[int(len(latencies_sorted) * 0.99)]
 
-        report.results.append(BenchResult(
-            name="avg_latency",
-            iterations=self.iterations,
-            total_seconds=total,
-            per_call_us=avg_latency * 1e6,
-            device=self.device,
-        ))
+        report.results.append(
+            BenchResult(
+                name="avg_latency",
+                iterations=self.iterations,
+                total_seconds=total,
+                per_call_us=avg_latency * 1e6,
+                device=self.device,
+            )
+        )
 
-        report.metadata.update({
-            "throughput_samples_per_sec": f"{samples_per_sec:.2f}",
-            "latency_p50_ms": f"{p50 * 1000:.2f}",
-            "latency_p95_ms": f"{p95 * 1000:.2f}",
-            "latency_p99_ms": f"{p99 * 1000:.2f}",
-        })
+        report.metadata.update(
+            {
+                "throughput_samples_per_sec": f"{samples_per_sec:.2f}",
+                "latency_p50_ms": f"{p50 * 1000:.2f}",
+                "latency_p95_ms": f"{p95 * 1000:.2f}",
+                "latency_p99_ms": f"{p99 * 1000:.2f}",
+            }
+        )
 
         return report
 
@@ -546,10 +585,12 @@ class MemoryBandwidthBench:
     """
 
     def __init__(self, device: str = "cpu", iterations: int = 50) -> None:
+        """Set the target device and number of iterations."""
         self.device = device
         self.iterations = iterations
 
     def run(self) -> BenchReport:
+        """Run the benchmark and return a populated BenchReport."""
         import torch
 
         dev = self.device
@@ -599,13 +640,15 @@ class MemoryBandwidthBench:
                 total_bytes = bytes_per_iter * self.iterations
                 bandwidth_mbs = (total_bytes / elapsed) / (1024 * 1024)
 
-                report.results.append(BenchResult(
-                    name=f"copy {size_mb}MB",
-                    iterations=self.iterations,
-                    total_seconds=elapsed,
-                    per_call_us=(elapsed / self.iterations) * 1e6,
-                    device=dev,
-                ))
+                report.results.append(
+                    BenchResult(
+                        name=f"copy {size_mb}MB",
+                        iterations=self.iterations,
+                        total_seconds=elapsed,
+                        per_call_us=(elapsed / self.iterations) * 1e6,
+                        device=dev,
+                    )
+                )
                 report.metadata[f"copy_{size_mb}MB_bandwidth_MBs"] = f"{bandwidth_mbs:.0f}"
 
                 del a
@@ -634,13 +677,15 @@ class MemoryBandwidthBench:
                 flops_per_iter = 2 * n * n * n
                 gflops = (flops_per_iter * iters / elapsed) / 1e9
 
-                report.results.append(BenchResult(
-                    name=f"matmul {n}x{n}",
-                    iterations=iters,
-                    total_seconds=elapsed,
-                    per_call_us=(elapsed / iters) * 1e6,
-                    device=dev,
-                ))
+                report.results.append(
+                    BenchResult(
+                        name=f"matmul {n}x{n}",
+                        iterations=iters,
+                        total_seconds=elapsed,
+                        per_call_us=(elapsed / iters) * 1e6,
+                        device=dev,
+                    )
+                )
                 report.metadata[f"matmul_{n}x{n}_GFLOPS"] = f"{gflops:.1f}"
 
                 del a, b

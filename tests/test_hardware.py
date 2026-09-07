@@ -33,6 +33,7 @@ import ascend_compat
 # Skip helpers
 # ---------------------------------------------------------------------------
 
+
 def _npu_available() -> bool:
     """Check if a real NPU is present (not mocked)."""
     try:
@@ -50,6 +51,7 @@ def _require_npu():
 # ===========================================================================
 # Basic NPU access
 # ===========================================================================
+
 
 @pytest.mark.hardware
 class TestNPUBasics:
@@ -90,6 +92,7 @@ class TestNPUBasics:
 # ===========================================================================
 # CUDA shim on real NPU
 # ===========================================================================
+
 
 @pytest.mark.hardware
 class TestShimOnNPU:
@@ -153,6 +156,7 @@ class TestShimOnNPU:
 # ===========================================================================
 # Flash attention on real NPU
 # ===========================================================================
+
 
 @pytest.mark.hardware
 class TestFlashAttnOnNPU:
@@ -236,8 +240,9 @@ class TestFlashAttnOnNPU:
         npu_fusion_attention produces numerically similar results to
         a reference (naive) attention implementation.
         """
-        from ascend_compat.ecosystem.flash_attn import flash_attn_func
         import math
+
+        from ascend_compat.ecosystem.flash_attn import flash_attn_func
 
         batch, seqlen, nheads, headdim = 1, 32, 2, 32
         torch.manual_seed(42)
@@ -266,13 +271,16 @@ class TestFlashAttnOnNPU:
             rtol=5e-2,  # float16 on NPU won't match float32 reference exactly
             atol=5e-2,
         )
-        print(f"Numerical error (max abs diff): "
-              f"{(npu_output.cpu().float() - ref_output).abs().max().item():.6f}")
+        print(
+            f"Numerical error (max abs diff): "
+            f"{(npu_output.cpu().float() - ref_output).abs().max().item():.6f}"
+        )
 
 
 # ===========================================================================
 # HuggingFace inference on real NPU
 # ===========================================================================
+
 
 @pytest.mark.hardware
 class TestHuggingFaceOnNPU:
@@ -312,7 +320,7 @@ class TestHuggingFaceOnNPU:
     def test_gpt2_generation(self):
         """Run GPT-2 text generation on NPU."""
         pytest.importorskip("transformers")
-        from transformers import AutoTokenizer, AutoModelForCausalLM
+        from transformers import AutoModelForCausalLM, AutoTokenizer
 
         tokenizer = AutoTokenizer.from_pretrained("gpt2")
         model = AutoModelForCausalLM.from_pretrained("gpt2", torch_dtype=torch.float16)
@@ -337,6 +345,7 @@ class TestHuggingFaceOnNPU:
 # ===========================================================================
 # Benchmark artifacts
 # ===========================================================================
+
 
 @pytest.mark.hardware
 class TestNPUBenchmarks:
@@ -380,7 +389,7 @@ class TestNPUBenchmarks:
 
             gflops = (2 * n**3 * iters) / elapsed / 1e9
             results.append((n, elapsed / iters * 1000, gflops))
-            print(f"  matmul {n}x{n}: {elapsed/iters*1000:.2f} ms, {gflops:.1f} GFLOPS")
+            print(f"  matmul {n}x{n}: {elapsed / iters * 1000:.2f} ms, {gflops:.1f} GFLOPS")
 
         assert len(results) == len(sizes)
 

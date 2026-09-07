@@ -2,22 +2,20 @@
 
 from __future__ import annotations
 
-import os
-import platform
 import sys
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
 from ascend_compat.doctor.env_setup import (
     COMPAT_MATRIX,
     EnvCheckResult,
-    _check_os,
-    _check_python,
     _check_cann_installation,
     _check_compilation_tools,
-    _check_env_vars,
     _check_disk_space,
+    _check_env_vars,
+    _check_os,
+    _check_python,
     format_env_report,
     full_environment_check,
 )
@@ -89,12 +87,15 @@ class TestCheckCANNInstallation:
 
         with patch("os.path.isdir", side_effect=mock_isdir):
             with patch("os.path.isfile", side_effect=mock_isfile):
-                with patch("builtins.open", MagicMock(
-                    return_value=MagicMock(
-                        __enter__=lambda s: MagicMock(read=lambda: "8.0.RC3"),
-                        __exit__=lambda *a: None,
-                    )
-                )):
+                with patch(
+                    "builtins.open",
+                    MagicMock(
+                        return_value=MagicMock(
+                            __enter__=lambda s: MagicMock(read=lambda: "8.0.RC3"),
+                            __exit__=lambda *a: None,
+                        )
+                    ),
+                ):
                     results = _check_cann_installation()
 
         # At least the main CANN check should pass
@@ -125,10 +126,10 @@ class TestCheckCompilationTools:
 
     def test_cmake_found(self) -> None:
         with patch("shutil.which", return_value="/usr/bin/cmake"):
-            import subprocess
-            with patch("subprocess.run", return_value=MagicMock(
-                stdout="cmake version 3.22.1", returncode=0
-            )):
+            with patch(
+                "subprocess.run",
+                return_value=MagicMock(stdout="cmake version 3.22.1", returncode=0),
+            ):
                 results = _check_compilation_tools()
         cmake_results = [r for r in results if "cmake" in r.name.lower()]
         assert len(cmake_results) >= 1

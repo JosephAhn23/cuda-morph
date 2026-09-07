@@ -26,7 +26,7 @@ logger = get_logger(__name__)
 def _get_device_type() -> str:
     """Return the device type string for the preferred backend."""
     backend = preferred_backend()
-    _TYPE_MAP = {
+    type_map = {
         Backend.NPU: "npu",
         Backend.MLU: "mlu",
         Backend.XPU: "xpu",
@@ -34,7 +34,7 @@ def _get_device_type() -> str:
         Backend.CUDA: "cuda",
         Backend.CPU: "cpu",
     }
-    return _TYPE_MAP.get(backend, "cpu")
+    return type_map.get(backend, "cpu")
 
 
 def autocast(*args: Any, **kwargs: Any) -> Any:
@@ -54,7 +54,7 @@ def autocast(*args: Any, **kwargs: Any) -> Any:
     return torch.amp.autocast(device_type, *args, **kwargs)
 
 
-def GradScaler(*args: Any, **kwargs: Any) -> Any:
+def GradScaler(*args: Any, **kwargs: Any) -> Any:  # noqa: N802 — mirrors torch.cuda.amp.GradScaler
     """Backend-aware GradScaler.
 
     Wraps ``torch.amp.GradScaler`` with the correct device for the
@@ -112,7 +112,7 @@ def get_distributed_backend() -> str:
     AMD ROCm, ``"ccl"`` for Intel, ``"nccl"`` for NVIDIA, or ``"gloo"`` for CPU.
     """
     backend = preferred_backend()
-    _DIST_MAP = {
+    dist_map = {
         Backend.NPU: "hccl",
         Backend.MLU: "cncl",
         Backend.ROCM: "rccl",
@@ -120,7 +120,7 @@ def get_distributed_backend() -> str:
         Backend.CUDA: "nccl",
         Backend.CPU: "gloo",
     }
-    return _DIST_MAP.get(backend, "gloo")
+    return dist_map.get(backend, "gloo")
 
 
 def graph_mode() -> Any:
@@ -134,6 +134,7 @@ def graph_mode() -> Any:
     This wrapper provides a graceful fallback.
     """
     import contextlib
+
     backend = preferred_backend()
 
     if backend == Backend.CUDA:
@@ -141,7 +142,5 @@ def graph_mode() -> Any:
         if hasattr(torch.cuda, "graph"):
             return torch.cuda.graph()
 
-    logger.warning(
-        "Graph capture is not supported on %s — running eagerly", backend.value
-    )
+    logger.warning("Graph capture is not supported on %s — running eagerly", backend.value)
     return contextlib.nullcontext()

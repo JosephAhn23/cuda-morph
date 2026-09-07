@@ -15,10 +15,9 @@ import tempfile
 from pathlib import Path
 
 import pytest
-
 from click.testing import CliRunner
 
-from ascend_compat.cli import CheckReport, check_file, main, port_file, show_info
+from ascend_compat.cli import check_file, main, port_file, show_info
 
 _runner = CliRunner()
 

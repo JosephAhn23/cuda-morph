@@ -56,9 +56,9 @@ from __future__ import annotations
 
 import os
 import warnings
-from typing import Any, Callable, Dict, Optional, Tuple
+from typing import Any, Callable
 
-from ascend_compat._backend import Backend, get_torch, has_npu, preferred_backend
+from ascend_compat._backend import Backend, get_torch, preferred_backend
 from ascend_compat._logging import get_logger
 from ascend_compat.cuda_shim._import_hook import install_import_hook, uninstall_import_hook
 from ascend_compat.cuda_shim._patch_manager import PatchManager
@@ -78,7 +78,7 @@ _manager = PatchManager()
 # ---------------------------------------------------------------------------
 
 
-def _pytorch_version() -> Tuple[int, int, int]:
+def _pytorch_version() -> tuple[int, int, int]:
     """Return PyTorch version as (major, minor, patch) ints.
 
     Handles version strings like '2.5.1', '2.5.1+cu121', '2.5.1a0+gitXXX'.
@@ -93,10 +93,11 @@ def _pytorch_version() -> Tuple[int, int, int]:
         return (0, 0, 0)
 
 
-def _torch_npu_version() -> Tuple[int, int, int]:
+def _torch_npu_version() -> tuple[int, int, int]:
     """Return torch_npu version as (major, minor, patch) ints."""
     try:
         from ascend_compat._backend import get_torch_npu
+
         npu = get_torch_npu()
         if npu is None:
             return (0, 0, 0)
@@ -136,14 +137,14 @@ def _check_version_compatibility() -> None:
         )
 
     # Known bad combinations
-    _BAD_COMBOS: Dict[Tuple[Tuple[int, int], Tuple[int, int]], str] = {
+    bad_combos: dict[tuple[tuple[int, int], tuple[int, int]], str] = {
         ((2, 1), (2, 0)): "torch_npu 2.0 is not compatible with PyTorch 2.1 — upgrade torch_npu",
     }
 
     combo = (pt_ver[:2], npu_ver[:2])
-    if combo in _BAD_COMBOS:
+    if combo in bad_combos:
         warnings.warn(
-            f"Known incompatible combination: {_BAD_COMBOS[combo]}",
+            f"Known incompatible combination: {bad_combos[combo]}",
             RuntimeWarning,
             stacklevel=3,
         )
@@ -183,7 +184,9 @@ def activate() -> None:
 
     logger.info(
         "Activating cuda-morph (backend=%s, PyTorch=%d.%d.%d, torch_npu=%d.%d.%d)",
-        backend.value, *pt_ver, *npu_ver,
+        backend.value,
+        *pt_ver,
+        *npu_ver,
     )
 
     # Pre-activation version compatibility check
@@ -236,7 +239,7 @@ def is_activated() -> bool:
     return _manager.is_active
 
 
-def get_patch_stats() -> Dict[str, int]:
+def get_patch_stats() -> dict[str, int]:
     """Return per-patch call counters for observability.
 
     Returns:
@@ -257,7 +260,7 @@ def get_patch_stats() -> Dict[str, int]:
     return _manager.get_stats()
 
 
-def get_all_patch_stats() -> Dict[str, int]:
+def get_all_patch_stats() -> dict[str, int]:
     """Return counters for ALL registered patches (including zero-count)."""
     return _manager.get_all_stats()
 
@@ -314,7 +317,7 @@ def _patch_cuda_namespace() -> None:
     logger.info("Patched %d torch.cuda attributes via registry", count)
 
 
-def _resolve_npu_attr(npu: Any, dotted_name: str) -> Optional[Any]:
+def _resolve_npu_attr(npu: Any, dotted_name: str) -> Any | None:
     """Resolve a potentially dotted attribute like 'amp.autocast' on torch.npu."""
     obj = npu
     for part in dotted_name.split("."):
@@ -326,9 +329,11 @@ def _resolve_npu_attr(npu: Any, dotted_name: str) -> Optional[Any]:
 
 def _make_proxy(target: Callable[..., Any], cuda_name: str, npu_name: str) -> Callable[..., Any]:
     """Create a logging proxy that delegates to the NPU function."""
+
     def proxy(*args: Any, **kwargs: Any) -> Any:
         logger.debug("torch.cuda.%s → torch.npu.%s", cuda_name, npu_name)
         return target(*args, **kwargs)
+
     proxy.__name__ = cuda_name
     proxy.__doc__ = f"cuda-morph: torch.cuda.{cuda_name} → torch.npu.{npu_name}"
     return proxy
@@ -336,12 +341,14 @@ def _make_proxy(target: Callable[..., Any], cuda_name: str, npu_name: str) -> Ca
 
 def _make_unsupported_stub(cuda_name: str, note: str) -> Callable[..., Any]:
     """Create a stub that raises NotImplementedError with guidance."""
+
     def stub(*args: Any, **kwargs: Any) -> Any:
         raise NotImplementedError(
             f"torch.cuda.{cuda_name} is not supported on Ascend NPU.\n"
             f"  {note}\n"
             f"  See: cuda-morph docs/compatibility_matrix.md"
         )
+
     stub.__name__ = cuda_name
     stub.__doc__ = f"UNSUPPORTED on Ascend: {note}"
     return stub
@@ -372,9 +379,7 @@ def _patch_cuda_is_available() -> None:
 
     def _npu_aware_is_available() -> bool:
         """Returns False to prevent NCCL misdetection.  Use torch.npu.is_available() instead."""
-        logger.debug(
-            "torch.cuda.is_available() → False (NPU system; use torch.npu.is_available())"
-        )
+        logger.debug("torch.cuda.is_available() → False (NPU system; use torch.npu.is_available())")
         return False
 
     _manager.apply(torch.cuda, "is_available", _npu_aware_is_available, "cuda.is_available")
@@ -562,8 +567,12 @@ def _patch_cpu_fallback() -> None:
     _manager.apply(torch.cuda, "manual_seed", _noop, "cpu.manual_seed")
     _manager.apply(torch.cuda, "manual_seed_all", _noop, "cpu.manual_seed_all")
 
-    for attr in ("memory_allocated", "max_memory_allocated",
-                 "memory_reserved", "max_memory_reserved"):
+    for attr in (
+        "memory_allocated",
+        "max_memory_allocated",
+        "memory_reserved",
+        "max_memory_reserved",
+    ):
         _manager.apply(torch.cuda, attr, _zero, f"cpu.{attr}")
 
     logger.info("CPU fallback patches applied — torch.cuda calls are safe no-ops")

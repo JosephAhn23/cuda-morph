@@ -53,8 +53,9 @@ class CambriconBackend(BackendInfo):
     def is_available() -> bool:
         """Check if Cambricon MLU hardware is present and torch_mlu works."""
         try:
-            import torch_mlu  # type: ignore[import-untyped]  # noqa: F401
             import torch
+            import torch_mlu  # type: ignore[import-untyped]  # noqa: F401
+
             return hasattr(torch, "mlu") and torch.mlu.is_available()
         except Exception:
             return False
@@ -64,6 +65,7 @@ class CambriconBackend(BackendInfo):
         """Return number of Cambricon MLU devices."""
         try:
             import torch
+
             if hasattr(torch, "mlu"):
                 return torch.mlu.device_count()
         except Exception:
@@ -75,6 +77,7 @@ class CambriconBackend(BackendInfo):
         """Return the Cambricon MLU model name."""
         try:
             import torch
+
             if hasattr(torch, "mlu"):
                 return torch.mlu.get_device_name(index)
         except Exception:

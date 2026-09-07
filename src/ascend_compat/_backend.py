@@ -36,7 +36,7 @@ from __future__ import annotations
 
 import enum
 import functools
-from typing import Any, Dict, Optional, Type
+from typing import Any
 
 from ascend_compat._logging import get_logger
 
@@ -51,16 +51,16 @@ logger = get_logger(__name__)
 class Backend(enum.Enum):
     """Available compute backends, ordered by preference."""
 
-    NPU = "npu"      # Huawei Ascend via torch_npu
-    MLU = "mlu"      # Cambricon via torch_mlu
-    ROCM = "rocm"    # AMD via ROCm/HIP (presents as "cuda" device)
-    XPU = "xpu"      # Intel via IPEX/Level Zero
-    CUDA = "cuda"    # NVIDIA via torch.cuda
-    CPU = "cpu"      # Always available
+    NPU = "npu"  # Huawei Ascend via torch_npu
+    MLU = "mlu"  # Cambricon via torch_mlu
+    ROCM = "rocm"  # AMD via ROCm/HIP (presents as "cuda" device)
+    XPU = "xpu"  # Intel via IPEX/Level Zero
+    CUDA = "cuda"  # NVIDIA via torch.cuda
+    CPU = "cpu"  # Always available
 
 
 # Map backend device type strings to enum values
-_BACKEND_DEVICE_TYPES: Dict[str, Backend] = {
+_BACKEND_DEVICE_TYPES: dict[str, Backend] = {
     "npu": Backend.NPU,
     "mlu": Backend.MLU,
     "rocm": Backend.ROCM,
@@ -74,8 +74,8 @@ _BACKEND_DEVICE_TYPES: Dict[str, Backend] = {
 # Lazy module references (populated on first access)
 # ---------------------------------------------------------------------------
 
-_torch: Optional[Any] = None
-_torch_npu: Optional[Any] = None
+_torch: Any | None = None
+_torch_npu: Any | None = None
 
 
 def _import_torch() -> Any:
@@ -84,16 +84,16 @@ def _import_torch() -> Any:
     if _torch is None:
         try:
             import torch  # type: ignore[import-untyped]
+
             _torch = torch
         except ImportError:
             raise ImportError(
-                "PyTorch is required but not installed. "
-                "Install it with: pip install torch>=2.0"
+                "PyTorch is required but not installed. Install it with: pip install torch>=2.0"
             ) from None
     return _torch
 
 
-def _import_torch_npu() -> Optional[Any]:
+def _import_torch_npu() -> Any | None:
     """Lazily import torch_npu, returning None if unavailable.
 
     torch_npu is Huawei's official PyTorch adapter for Ascend NPUs.
@@ -106,6 +106,7 @@ def _import_torch_npu() -> Optional[Any]:
     if _torch_npu is None:
         try:
             import torch_npu  # type: ignore[import-untyped]
+
             _torch_npu = torch_npu
             logger.debug("torch_npu imported successfully — Ascend backend available")
         except ImportError:
@@ -118,15 +119,15 @@ def _import_torch_npu() -> Optional[Any]:
 # Active backend tracking
 # ---------------------------------------------------------------------------
 
-_active_backend_info: Optional[Any] = None  # BackendInfo subclass, set by activate()
+_active_backend_info: Any | None = None  # BackendInfo subclass, set by activate()
 
 
-def get_active_backend_info() -> Optional[Any]:
+def get_active_backend_info() -> Any | None:
     """Return the active backend's BackendInfo, or None if not set."""
     return _active_backend_info
 
 
-def set_active_backend_info(info: Optional[Any]) -> None:
+def set_active_backend_info(info: Any | None) -> None:
     """Set the active backend info (called by activate())."""
     global _active_backend_info  # noqa: PLW0603
     _active_backend_info = info
@@ -158,6 +159,7 @@ def detect_backends() -> tuple[Backend, ...]:
     # 1. Check pluggable backends from the registry
     try:
         from ascend_compat.backends import BACKEND_REGISTRY
+
         for name, backend_cls in BACKEND_REGISTRY.items():
             try:
                 if backend_cls.is_available():
@@ -171,9 +173,7 @@ def detect_backends() -> tuple[Backend, ...]:
                             backend_cls.device_count(),
                         )
             except Exception as exc:  # noqa: BLE001
-                logger.warning(
-                    "Backend '%s' detection failed: %s", name, exc
-                )
+                logger.warning("Backend '%s' detection failed: %s", name, exc)
     except ImportError:
         # Fallback: probe directly if backends package fails to import
         logger.debug("backends package not available, using legacy detection")
@@ -268,7 +268,7 @@ def get_torch() -> Any:
     return _import_torch()
 
 
-def get_torch_npu() -> Optional[Any]:
+def get_torch_npu() -> Any | None:
     """Return the ``torch_npu`` module, or None if not installed."""
     return _import_torch_npu()
 
@@ -308,15 +308,15 @@ def translate_device_string(device: str) -> str:
     backend = preferred_backend()
 
     # Backends that need "cuda" → their device type translation
-    _TRANSLATE_BACKENDS = {
+    translate_backends = {
         Backend.NPU: "npu",
         Backend.MLU: "mlu",
         Backend.XPU: "xpu",
         # ROCm does NOT need translation — it presents as "cuda" via HIP
     }
 
-    if backend in _TRANSLATE_BACKENDS and device.startswith("cuda"):
-        target_type = _TRANSLATE_BACKENDS[backend]
+    if backend in translate_backends and device.startswith("cuda"):
+        target_type = translate_backends[backend]
         translated = device.replace("cuda", target_type, 1)
         logger.debug("Device string translated: %r → %r", device, translated)
         return translated

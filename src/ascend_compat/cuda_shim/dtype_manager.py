@@ -35,7 +35,7 @@ from __future__ import annotations
 
 import enum
 import functools
-from typing import Any, Callable, Dict, List, Optional, Set, Tuple
+from typing import Any, Callable
 
 from ascend_compat._logging import get_logger
 
@@ -45,24 +45,24 @@ logger = get_logger(__name__)
 class DTypePolicy(enum.Enum):
     """Policy for automatic dtype substitution."""
 
-    STRICT = "strict"      # Raise error on unsupported dtype
-    AUTO = "auto"          # Silently substitute to best supported dtype
-    WARN = "warn"          # Substitute but emit a warning
+    STRICT = "strict"  # Raise error on unsupported dtype
+    AUTO = "auto"  # Silently substitute to best supported dtype
+    WARN = "warn"  # Substitute but emit a warning
     DISABLED = "disabled"  # No dtype management
 
 
 # Dtype substitution map: unsupported → best supported equivalent
 # This is conservative: only substitute when we KNOW the dtype is unsupported
-_DTYPE_SUBSTITUTIONS: Dict[str, str] = {
-    "float64": "float32",     # No FP64 on any Ascend model
-    "float16": "float16",     # Native — no change needed
-    "float32": "float32",     # Native on 910B+, emulated on 910A
+_DTYPE_SUBSTITUTIONS: dict[str, str] = {
+    "float64": "float32",  # No FP64 on any Ascend model
+    "float16": "float16",  # Native — no change needed
+    "float32": "float32",  # Native on 910B+, emulated on 910A
 }
 
 # Whether BF16 needs substitution depends on hardware.
 # On 910A without firmware update: bfloat16 → float16
 # On 910B+: bfloat16 is native
-_BF16_NEEDS_SUBSTITUTION: Optional[bool] = None
+_BF16_NEEDS_SUBSTITUTION: bool | None = None
 
 _active_policy = DTypePolicy.DISABLED
 _patched = False
@@ -86,6 +86,7 @@ def _probe_bf16_support() -> bool:
 
     try:
         import torch
+
         if hasattr(torch, "npu") and torch.npu.is_available():
             # Try to create a BF16 tensor on NPU
             t = torch.zeros(2, 2, dtype=torch.bfloat16, device="npu:0")
@@ -104,7 +105,7 @@ def _probe_bf16_support() -> bool:
     return True
 
 
-def check_dtype_support(dtype_name: str) -> Tuple[bool, Optional[str]]:
+def check_dtype_support(dtype_name: str) -> tuple[bool, str | None]:
     """Check if a dtype is natively supported on the current NPU.
 
     Args:
@@ -135,7 +136,7 @@ def check_dtype_support(dtype_name: str) -> Tuple[bool, Optional[str]]:
     return True, None  # Unknown — assume supported
 
 
-def get_substitution_map() -> Dict[str, str]:
+def get_substitution_map() -> dict[str, str]:
     """Return the active dtype substitution map.
 
     Includes bf16 substitution if hardware doesn't support it.
@@ -223,6 +224,7 @@ def _resolve_dtype(dtype: Any) -> Any:
         )
     elif _active_policy == DTypePolicy.WARN:
         import warnings
+
         warnings.warn(
             f"cuda-morph: Substituting torch.{dtype_name} → torch.{substitute} "
             f"(unsupported on Ascend NPU)",
@@ -234,11 +236,12 @@ def _resolve_dtype(dtype: Any) -> Any:
     return substitute_dtype
 
 
-def _dtype_to_name(dtype: Any) -> Optional[str]:
+def _dtype_to_name(dtype: Any) -> str | None:
     """Convert a torch.dtype to its string name."""
     try:
         import torch
-        _DTYPE_NAMES = {
+
+        dtype_names = {
             torch.float16: "float16",
             torch.float32: "float32",
             torch.float64: "float64",
@@ -250,27 +253,40 @@ def _dtype_to_name(dtype: Any) -> Optional[str]:
             torch.uint8: "uint8",
             torch.bool: "bool",
         }
-        return _DTYPE_NAMES.get(dtype)
+        return dtype_names.get(dtype)
     except (ImportError, AttributeError):
         return None
 
 
 # Creation function wrappers
-_originals_creation: Dict[str, Any] = {}
+_originals_creation: dict[str, Any] = {}
 
 
 def _make_creation_wrapper(fn: Callable[..., Any], name: str) -> Callable[..., Any]:
     """Wrap a tensor creation function to intercept dtype."""
+
     @functools.wraps(fn)
     def wrapper(*args: Any, **kwargs: Any) -> Any:
         if "dtype" in kwargs:
             kwargs["dtype"] = _resolve_dtype(kwargs["dtype"])
         return fn(*args, **kwargs)
+
     return wrapper
 
 
-_CREATION_FN_NAMES = ["tensor", "zeros", "ones", "randn", "empty", "full", "rand", "zeros_like",
-                      "ones_like", "randn_like", "empty_like"]
+_CREATION_FN_NAMES = [
+    "tensor",
+    "zeros",
+    "ones",
+    "randn",
+    "empty",
+    "full",
+    "rand",
+    "zeros_like",
+    "ones_like",
+    "randn_like",
+    "empty_like",
+]
 
 
 def _patch_creation_fns() -> None:
@@ -288,7 +304,9 @@ def _patch_creation_fns() -> None:
             setattr(torch, name, _make_creation_wrapper(fn, name))
 
     _patched = True
-    logger.debug("Dtype management patches applied to %d creation functions", len(_originals_creation))
+    logger.debug(
+        "Dtype management patches applied to %d creation functions", len(_originals_creation)
+    )
 
 
 def _unpatch_creation_fns() -> None:

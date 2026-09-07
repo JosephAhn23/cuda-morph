@@ -56,8 +56,10 @@ class TestTritonInfo:
         # Provide some backend names
         mock_triton.backends.__dir__ = lambda self: ["cuda", "rocm"]
         with patch.dict("sys.modules", {"triton": mock_triton}):
-            with patch("ascend_compat.ecosystem.triton_bridge.is_triton_ascend_available",
-                       return_value=False):
+            with patch(
+                "ascend_compat.ecosystem.triton_bridge.is_triton_ascend_available",
+                return_value=False,
+            ):
                 info = get_triton_info()
         assert info["triton_installed"] is True
         assert info["triton_version"] == "2.5.0"
@@ -67,18 +69,21 @@ class TestConfigureBackend:
     """Test Triton backend configuration."""
 
     def test_warns_when_not_available(self) -> None:
-        with patch("ascend_compat.ecosystem.triton_bridge.is_triton_ascend_available",
-                   return_value=False):
+        with patch(
+            "ascend_compat.ecosystem.triton_bridge.is_triton_ascend_available", return_value=False
+        ):
             result = configure_triton_backend()
         assert result is False
 
     def test_configures_when_available(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.delenv("TRITON_BACKEND", raising=False)
-        with patch("ascend_compat.ecosystem.triton_bridge.is_triton_ascend_available",
-                   return_value=True):
+        with patch(
+            "ascend_compat.ecosystem.triton_bridge.is_triton_ascend_available", return_value=True
+        ):
             result = configure_triton_backend()
         assert result is True
         import os
+
         assert os.environ.get("TRITON_BACKEND") == "ascend"
 
 

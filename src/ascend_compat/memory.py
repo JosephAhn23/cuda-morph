@@ -13,7 +13,7 @@ Usage::
 
 from __future__ import annotations
 
-from typing import Any, Optional
+from typing import Any
 
 from ascend_compat._logging import get_logger
 
@@ -23,10 +23,11 @@ logger = get_logger(__name__)
 def _get_backend_module() -> Any:
     """Return the torch device module for the preferred backend."""
     from ascend_compat.device import _get_backend_module
+
     return _get_backend_module()
 
 
-def memory_allocated(device: Optional[int] = None) -> int:
+def memory_allocated(device: int | None = None) -> int:
     """Return current memory usage in bytes on the given device."""
     mod = _get_backend_module()
     if mod is None or not hasattr(mod, "memory_allocated"):
@@ -34,7 +35,7 @@ def memory_allocated(device: Optional[int] = None) -> int:
     return mod.memory_allocated(device) if device is not None else mod.memory_allocated()
 
 
-def max_memory_allocated(device: Optional[int] = None) -> int:
+def max_memory_allocated(device: int | None = None) -> int:
     """Return peak memory usage in bytes on the given device."""
     mod = _get_backend_module()
     if mod is None or not hasattr(mod, "max_memory_allocated"):
@@ -42,7 +43,7 @@ def max_memory_allocated(device: Optional[int] = None) -> int:
     return mod.max_memory_allocated(device) if device is not None else mod.max_memory_allocated()
 
 
-def memory_reserved(device: Optional[int] = None) -> int:
+def memory_reserved(device: int | None = None) -> int:
     """Return current reserved (cached) memory in bytes."""
     mod = _get_backend_module()
     if mod is None or not hasattr(mod, "memory_reserved"):
@@ -50,7 +51,7 @@ def memory_reserved(device: Optional[int] = None) -> int:
     return mod.memory_reserved(device) if device is not None else mod.memory_reserved()
 
 
-def max_memory_reserved(device: Optional[int] = None) -> int:
+def max_memory_reserved(device: int | None = None) -> int:
     """Return peak reserved (cached) memory in bytes."""
     mod = _get_backend_module()
     if mod is None or not hasattr(mod, "max_memory_reserved"):
@@ -65,7 +66,7 @@ def empty_cache() -> None:
         mod.empty_cache()
 
 
-def reset_peak_memory_stats(device: Optional[int] = None) -> None:
+def reset_peak_memory_stats(device: int | None = None) -> None:
     """Reset peak memory tracking statistics."""
     mod = _get_backend_module()
     if mod is not None and hasattr(mod, "reset_peak_memory_stats"):
@@ -75,7 +76,7 @@ def reset_peak_memory_stats(device: Optional[int] = None) -> None:
             mod.reset_peak_memory_stats()
 
 
-def memory_summary(device: Optional[int] = None) -> str:
+def memory_summary(device: int | None = None) -> str:
     """Return a human-readable memory summary string."""
     mod = _get_backend_module()
     if mod is None or not hasattr(mod, "memory_summary"):

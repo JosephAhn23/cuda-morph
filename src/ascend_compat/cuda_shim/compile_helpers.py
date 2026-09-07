@@ -37,14 +37,13 @@ Usage::
 
 from __future__ import annotations
 
-import math
 import sys
 import threading
 import warnings
 from collections import OrderedDict
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
-from ascend_compat._backend import has_npu, get_torch, get_torch_npu
+from ascend_compat._backend import get_torch, get_torch_npu, has_npu
 from ascend_compat._logging import get_logger
 
 logger = get_logger(__name__)
@@ -62,7 +61,7 @@ __all__ = [
 ]
 
 # Highest PyTorch version tested with this release.  Used by CompatibilityPolicy.
-LATEST_TESTED_VERSION: Tuple[int, int, int] = (2, 5, 1)
+LATEST_TESTED_VERSION: tuple[int, int, int] = (2, 5, 1)
 
 
 # ---------------------------------------------------------------------------
@@ -105,6 +104,7 @@ def is_torchair_available() -> bool:
     """Check if torchair (Ascend's torch.compile backend) is installed."""
     try:
         import torchair  # type: ignore[import-untyped]  # noqa: F401
+
         return True
     except ImportError:
         return False
@@ -122,12 +122,12 @@ def _is_backend_available(name: str) -> bool:
     return False
 
 
-def get_compile_info() -> Dict[str, Any]:
+def get_compile_info() -> dict[str, Any]:
     """Return information about torch.compile configuration.
 
     Useful for diagnostics (``cuda-morph doctor``).
     """
-    info: Dict[str, Any] = {
+    info: dict[str, Any] = {
         "recommended_backend": get_compile_backend(),
         "torchair_available": is_torchair_available(),
         "available_backends": [],
@@ -236,10 +236,12 @@ def safe_compile(model: Any, **kwargs: Any) -> Any:
         return compiled
     except Exception as exc:
         # Collect diagnostics
-        param_count = sum(p.numel() for p in model.parameters()) if hasattr(model, "parameters") else 0
+        param_count = (
+            sum(p.numel() for p in model.parameters()) if hasattr(model, "parameters") else 0
+        )
         npu_mod = get_torch_npu()
 
-        diag: Dict[str, Any] = {
+        diag: dict[str, Any] = {
             "error_type": type(exc).__name__,
             "error_message": str(exc),
             "torch_version": torch.__version__,
@@ -311,18 +313,19 @@ class CompatibilityPolicy:
     SILENT = "silent"
 
     @classmethod
-    def _get_policy(cls, policy: Optional[str] = None) -> str:
+    def _get_policy(cls, policy: str | None = None) -> str:
         """Resolve the active policy (explicit arg > env var > default)."""
         if policy is not None:
             return policy
         import os
+
         env = os.environ.get("ASCEND_COMPAT_COMPAT_POLICY", "").strip().lower()
         if env in (cls.STRICT, cls.WARN, cls.SILENT):
             return env
         return cls.WARN
 
     @classmethod
-    def check_forward_compat(cls, policy: Optional[str] = None) -> bool:
+    def check_forward_compat(cls, policy: str | None = None) -> bool:
         """Check if the current PyTorch version exceeds the latest tested version.
 
         Args:
@@ -346,7 +349,9 @@ class CompatibilityPolicy:
             return True
 
         current_str = f"{current[0]}.{current[1]}.{current[2]}"
-        tested_str = f"{LATEST_TESTED_VERSION[0]}.{LATEST_TESTED_VERSION[1]}.{LATEST_TESTED_VERSION[2]}"
+        tested_str = (
+            f"{LATEST_TESTED_VERSION[0]}.{LATEST_TESTED_VERSION[1]}.{LATEST_TESTED_VERSION[2]}"
+        )
 
         if policy == cls.STRICT:
             raise RuntimeError(
@@ -364,7 +369,9 @@ class CompatibilityPolicy:
         # SILENT: no warning
         logger.info(
             "Forward compat: PyTorch %s > tested %s, policy=%s",
-            current_str, tested_str, policy,
+            current_str,
+            tested_str,
+            policy,
         )
         return False
 
@@ -429,17 +436,18 @@ class ShapeBucketer:
 
     def __init__(
         self,
-        buckets: Optional[List[int]] = None,
-        max_size: Optional[int] = None,
+        buckets: list[int] | None = None,
+        max_size: int | None = None,
         max_cache_entries: int = 1024,
     ) -> None:
+        """Set the bucket sizes, size cap, and LRU cache capacity."""
         self.buckets = sorted(buckets or self.POWER_OF_2)
         self.max_size = max_size or self.buckets[-1]
         self.max_cache_entries = max_cache_entries
-        self._hit_count: Dict[int, int] = {}
+        self._hit_count: dict[int, int] = {}
         self._miss_count = 0
         # LRU cache: (shape_tuple, dtype, device_str, dim) → padded tensor
-        self._pad_cache: OrderedDict[Tuple, Any] = OrderedDict()
+        self._pad_cache: OrderedDict[tuple, Any] = OrderedDict()
         self._cache_hits = 0
         self._cache_misses = 0
         self._lock = threading.Lock()  # Protects _pad_cache mutations
@@ -519,7 +527,7 @@ class ShapeBucketer:
         ``pad_cached()`` when you repeatedly pad tensors with the same
         shape signature and want to avoid re-allocating the output buffer.
         """
-        torch = get_torch()
+        get_torch()
         ndim = tensor.dim()
         if dim < 0:
             dim = ndim + dim
@@ -578,7 +586,7 @@ class ShapeBucketer:
         with self._lock:
             return len(self._pad_cache)
 
-    def stats(self) -> Dict[str, Any]:
+    def stats(self) -> dict[str, Any]:
         """Return bucketing and cache statistics."""
         total = sum(self._hit_count.values()) + self._miss_count
         cache_total = self._cache_hits + self._cache_misses
@@ -587,17 +595,13 @@ class ShapeBucketer:
             "bucket_hits": dict(self._hit_count),
             "overflow_count": self._miss_count,
             "unique_buckets_used": len(self._hit_count),
-            "efficiency": (
-                f"{(1 - self._miss_count / total) * 100:.1f}%"
-                if total > 0 else "n/a"
-            ),
+            "efficiency": (f"{(1 - self._miss_count / total) * 100:.1f}%" if total > 0 else "n/a"),
             "cache_entries": len(self._pad_cache),
             "cache_max_entries": self.max_cache_entries,
             "cache_hits": self._cache_hits,
             "cache_misses": self._cache_misses,
             "cache_hit_rate": (
-                f"{self._cache_hits / cache_total * 100:.1f}%"
-                if cache_total > 0 else "n/a"
+                f"{self._cache_hits / cache_total * 100:.1f}%" if cache_total > 0 else "n/a"
             ),
             "cache_memory_bytes": self.cache_memory_bytes(),
         }

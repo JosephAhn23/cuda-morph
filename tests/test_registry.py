@@ -3,12 +3,10 @@
 from __future__ import annotations
 
 from ascend_compat.cuda_shim._registry import (
-    Mapping,
     MappingKind,
     classify_attr,
     get_all_mappings,
     get_direct_mappings,
-    get_adapted_mappings,
     get_mapping,
     get_unsupported,
 )
@@ -19,9 +17,16 @@ class TestRegistry:
 
     def test_direct_mappings_exist(self) -> None:
         """Core device/memory/stream APIs should be registered as DIRECT."""
-        for attr in ("is_available", "device_count", "current_device",
-                     "set_device", "synchronize", "memory_allocated",
-                     "empty_cache", "manual_seed"):
+        for attr in (
+            "is_available",
+            "device_count",
+            "current_device",
+            "set_device",
+            "synchronize",
+            "memory_allocated",
+            "empty_cache",
+            "manual_seed",
+        ):
             m = get_mapping(attr)
             assert m is not None, f"Missing mapping for {attr}"
             assert m.kind == MappingKind.DIRECT, f"{attr} should be DIRECT"

@@ -32,7 +32,7 @@ from __future__ import annotations
 
 import os
 import warnings
-from typing import Any, Dict, Optional, Tuple
+from typing import Any
 
 from ascend_compat._backend import has_npu
 from ascend_compat._logging import get_logger
@@ -40,16 +40,17 @@ from ascend_compat._logging import get_logger
 logger = get_logger(__name__)
 
 _applied = False
-_patch_results: Dict[str, bool] = {}
+_patch_results: dict[str, bool] = {}
 
 # Tested DeepSpeed versions
 _TESTED_DEEPSPEED = ((0, 12), (0, 13), (0, 14), (0, 15), (0, 16))
 
 
-def _get_deepspeed_version() -> Optional[Tuple[int, ...]]:
+def _get_deepspeed_version() -> tuple[int, ...] | None:
     """Return DeepSpeed (major, minor) version or None."""
     try:
         import deepspeed  # type: ignore[import-untyped]
+
         ver = getattr(deepspeed, "__version__", "0.0.0")
         parts = ver.split(".")[:2]
         return tuple(int(p) for p in parts)
@@ -86,7 +87,7 @@ def apply() -> None:
     logger.info("DeepSpeed compatibility patches applied")
 
 
-def get_patch_results() -> Dict[str, bool]:
+def get_patch_results() -> dict[str, bool]:
     """Return verification results: {patch_name: landed_successfully}."""
     return dict(_patch_results)
 
@@ -102,9 +103,7 @@ def _patch_visible_devices_env() -> None:
 
     if cuda_vis and not ascend_vis:
         os.environ["ASCEND_RT_VISIBLE_DEVICES"] = cuda_vis
-        logger.info(
-            "Mapped CUDA_VISIBLE_DEVICES=%s → ASCEND_RT_VISIBLE_DEVICES", cuda_vis
-        )
+        logger.info("Mapped CUDA_VISIBLE_DEVICES=%s → ASCEND_RT_VISIBLE_DEVICES", cuda_vis)
 
 
 def _patch_deepspeed_dist_backend() -> None:
@@ -126,9 +125,7 @@ def _patch_deepspeed_dist_backend() -> None:
 
             deepspeed.comm.init_distributed = _patched_init
             # Verify patch landed
-            _patch_results["dist_backend"] = (
-                deepspeed.comm.init_distributed is _patched_init
-            )
+            _patch_results["dist_backend"] = deepspeed.comm.init_distributed is _patched_init
             logger.debug("Patched deepspeed.comm.init_distributed")
         else:
             _patch_results["dist_backend"] = False

@@ -52,7 +52,7 @@ Key differences:
 from __future__ import annotations
 
 import math
-from typing import Any, Optional, Tuple, Union
+from typing import Any
 
 from ascend_compat._logging import get_logger
 
@@ -63,6 +63,7 @@ def _get_npu_fusion_attention() -> Any:
     """Lazily resolve torch_npu.npu_fusion_attention."""
     try:
         import torch_npu  # type: ignore[import-untyped]
+
         if hasattr(torch_npu, "npu_fusion_attention"):
             return torch_npu.npu_fusion_attention
     except ImportError:
@@ -71,6 +72,7 @@ def _get_npu_fusion_attention() -> Any:
     # Fallback: check if it's accessible as a torch op
     try:
         import torch
+
         if hasattr(torch.ops, "npu") and hasattr(torch.ops.npu, "npu_fusion_attention"):
             return torch.ops.npu.npu_fusion_attention
     except (ImportError, AttributeError):
@@ -84,13 +86,13 @@ def flash_attn_func(
     k: Any,
     v: Any,
     dropout_p: float = 0.0,
-    softmax_scale: Optional[float] = None,
+    softmax_scale: float | None = None,
     causal: bool = False,
-    window_size: Tuple[int, int] = (-1, -1),
-    alibi_slopes: Optional[Any] = None,
+    window_size: tuple[int, int] = (-1, -1),
+    alibi_slopes: Any | None = None,
     deterministic: bool = False,
     return_attn_probs: bool = False,
-) -> Union[Any, Tuple[Any, Any, Any]]:
+) -> Any | tuple[Any, Any, Any]:
     """Drop-in replacement for ``flash_attn.flash_attn_func``.
 
     Wraps ``torch_npu.npu_fusion_attention`` with argument translation.
@@ -169,14 +171,22 @@ def flash_attn_func(
         "flash_attn_func → npu_fusion_attention("
         "batch=%d, seq_q=%d, seq_k=%d, heads=%d, dim=%d, "
         "scale=%.4f, keep_prob=%.2f, causal=%s)",
-        batch, seqlen_q, seqlen_k, nheads, headdim,
-        softmax_scale, keep_prob, causal,
+        batch,
+        seqlen_q,
+        seqlen_k,
+        nheads,
+        headdim,
+        softmax_scale,
+        keep_prob,
+        causal,
     )
 
     # Call npu_fusion_attention
     # Input layout BSND = (Batch, Sequence, NumHeads, Dim)
     output, softmax_max, softmax_sum, softmax_out = npu_attn(
-        q, k, v,
+        q,
+        k,
+        v,
         head_num=head_num,
         input_layout="BSND",
         scale=softmax_scale,
@@ -188,6 +198,7 @@ def flash_attn_func(
     if return_attn_probs:
         # Approximate softmax_lse from softmax_max + log(softmax_sum)
         import torch
+
         softmax_lse = softmax_max + torch.log(softmax_sum + 1e-12)
         return output, softmax_lse, None
 
@@ -203,11 +214,11 @@ def flash_attn_varlen_func(
     max_seqlen_q: int,
     max_seqlen_k: int,
     dropout_p: float = 0.0,
-    softmax_scale: Optional[float] = None,
+    softmax_scale: float | None = None,
     causal: bool = False,
     return_attn_probs: bool = False,
     **kwargs: Any,
-) -> Union[Any, Tuple[Any, Any, Any]]:
+) -> Any | tuple[Any, Any, Any]:
     """Drop-in replacement for ``flash_attn.flash_attn_varlen_func``.
 
     Handles variable-length sequences (packed/unpadded format).
@@ -228,13 +239,13 @@ def flash_attn_varlen_func(
         softmax_scale: Scaling factor.  Default: ``1 / sqrt(headdim)``.
         causal: Causal masking.
         return_attn_probs: Return attention weights.
+        **kwargs: Extra keyword args accepted for API compatibility with
+            ``flash_attn.flash_attn_varlen_func``; unused here.
     """
     npu_attn = _get_npu_fusion_attention()
 
     if npu_attn is None:
-        raise RuntimeError(
-            "torch_npu.npu_fusion_attention not available for varlen attention."
-        )
+        raise RuntimeError("torch_npu.npu_fusion_attention not available for varlen attention.")
 
     import torch
 
@@ -249,28 +260,34 @@ def flash_attn_varlen_func(
     next_tokens = 0 if causal else 2147483647
 
     # Pad and reshape to (batch, max_seqlen, nheads, headdim) for BSND layout
-    q_padded = torch.zeros(batch_size, max_seqlen_q, nheads, headdim,
-                           dtype=q.dtype, device=q.device)
-    k_padded = torch.zeros(batch_size, max_seqlen_k, q.shape[1], headdim,
-                           dtype=k.dtype, device=k.device)
-    v_padded = torch.zeros(batch_size, max_seqlen_k, q.shape[1], headdim,
-                           dtype=v.dtype, device=v.device)
+    q_padded = torch.zeros(
+        batch_size, max_seqlen_q, nheads, headdim, dtype=q.dtype, device=q.device
+    )
+    k_padded = torch.zeros(
+        batch_size, max_seqlen_k, q.shape[1], headdim, dtype=k.dtype, device=k.device
+    )
+    v_padded = torch.zeros(
+        batch_size, max_seqlen_k, q.shape[1], headdim, dtype=v.dtype, device=v.device
+    )
 
     for i in range(batch_size):
         sq = cu_seqlens_q[i + 1] - cu_seqlens_q[i]
         sk = cu_seqlens_k[i + 1] - cu_seqlens_k[i]
-        q_padded[i, :sq] = q[cu_seqlens_q[i]:cu_seqlens_q[i + 1]]
-        k_padded[i, :sk] = k[cu_seqlens_k[i]:cu_seqlens_k[i + 1]]
-        v_padded[i, :sk] = v[cu_seqlens_k[i]:cu_seqlens_k[i + 1]]
+        q_padded[i, :sq] = q[cu_seqlens_q[i] : cu_seqlens_q[i + 1]]
+        k_padded[i, :sk] = k[cu_seqlens_k[i] : cu_seqlens_k[i + 1]]
+        v_padded[i, :sk] = v[cu_seqlens_k[i] : cu_seqlens_k[i + 1]]
 
     logger.debug(
-        "flash_attn_varlen_func → padded npu_fusion_attention "
-        "(batch=%d, max_q=%d, max_k=%d)",
-        batch_size, max_seqlen_q, max_seqlen_k,
+        "flash_attn_varlen_func → padded npu_fusion_attention (batch=%d, max_q=%d, max_k=%d)",
+        batch_size,
+        max_seqlen_q,
+        max_seqlen_k,
     )
 
     output_padded, _, _, _ = npu_attn(
-        q_padded, k_padded, v_padded,
+        q_padded,
+        k_padded,
+        v_padded,
         head_num=nheads,
         input_layout="BSND",
         scale=softmax_scale,
@@ -295,10 +312,10 @@ def flash_attn_with_kvcache(
     q: Any,
     k_cache: Any,
     v_cache: Any,
-    k: Optional[Any] = None,
-    v: Optional[Any] = None,
-    cache_seqlens: Optional[Any] = None,
-    softmax_scale: Optional[float] = None,
+    k: Any | None = None,
+    v: Any | None = None,
+    cache_seqlens: Any | None = None,
+    softmax_scale: float | None = None,
     causal: bool = False,
     **kwargs: Any,
 ) -> Any:
@@ -321,14 +338,16 @@ def flash_attn_with_kvcache(
             batch = k.shape[0]
             for i in range(batch):
                 sl = cache_seqlens[i]
-                k_cache[i, sl:sl + k.shape[1]] = k[i]
-                v_cache[i, sl:sl + v.shape[1]] = v[i]
+                k_cache[i, sl : sl + k.shape[1]] = k[i]
+                v_cache[i, sl : sl + v.shape[1]] = v[i]
         else:
             k_cache = torch.cat([k_cache, k], dim=1)
             v_cache = torch.cat([v_cache, v], dim=1)
 
     return flash_attn_func(
-        q, k_cache, v_cache,
+        q,
+        k_cache,
+        v_cache,
         softmax_scale=softmax_scale,
         causal=causal,
     )
