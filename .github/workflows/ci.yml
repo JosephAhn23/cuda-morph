@@ -24,6 +24,10 @@ jobs:
           # PyTorch 2.5+ requires Python 3.9+
           - python-version: "3.9"
             torch-version: "2.5.0"
+          # PyTorch 2.1.0 predates Python 3.12 support — no cp312 wheel was
+          # ever published, so this combination can never install.
+          - python-version: "3.12"
+            torch-version: "2.1.0"
 
     steps:
       - uses: actions/checkout@v4

@@ -2,14 +2,12 @@
 
 from __future__ import annotations
 
-import pytest
-
+from ascend_compat._backend import Backend
 from ascend_compat.backends import BACKEND_REGISTRY, BackendInfo
 from ascend_compat.backends.ascend import AscendBackend
 from ascend_compat.backends.cambricon import CambriconBackend
-from ascend_compat.backends.rocm import ROCmBackend
 from ascend_compat.backends.intel import IntelBackend
-from ascend_compat._backend import Backend
+from ascend_compat.backends.rocm import ROCmBackend
 
 
 class TestBackendRegistry:
@@ -38,8 +36,13 @@ class TestBackendRegistry:
             assert issubclass(cls, BackendInfo), f"{name} must subclass BackendInfo"
 
     def test_all_backends_have_required_attrs(self):
-        required = ["name", "device_type", "adapter_module",
-                     "collective_backend", "visible_devices_env"]
+        required = [
+            "name",
+            "device_type",
+            "adapter_module",
+            "collective_backend",
+            "visible_devices_env",
+        ]
         for name, cls in BACKEND_REGISTRY.items():
             for attr in required:
                 val = getattr(cls, attr)
@@ -209,8 +212,18 @@ class TestIntelBackend:
     def test_device_count_zero_without_hardware(self):
         assert IntelBackend.device_count() == 0
 
-    def test_adapter_version_none_without_install(self):
-        assert IntelBackend.get_adapter_version() is None
+    def test_adapter_version_without_ipex_install(self):
+        # Without intel_extension_for_pytorch installed, the result depends
+        # on whether this PyTorch build bundles torch.xpu natively (>=2.9):
+        # native builds report a "native (torch X.Y.Z)" string, older
+        # builds (no torch.xpu at all) report None.
+        version = IntelBackend.get_adapter_version()
+        import torch
+
+        if hasattr(torch, "xpu"):
+            assert version == f"native (torch {torch.__version__})"
+        else:
+            assert version is None
 
     def test_summary(self):
         summary = IntelBackend.summary()
@@ -240,20 +253,25 @@ class TestGlobalPredicates:
 
     def test_has_mlu_returns_bool(self):
         import ascend_compat
+
         assert isinstance(ascend_compat.has_mlu(), bool)
 
     def test_has_mlu_false_without_hardware(self):
         import ascend_compat
+
         assert ascend_compat.has_mlu() is False
 
     def test_has_rocm_returns_bool(self):
         import ascend_compat
+
         assert isinstance(ascend_compat.has_rocm(), bool)
 
     def test_has_xpu_returns_bool(self):
         import ascend_compat
+
         assert isinstance(ascend_compat.has_xpu(), bool)
 
     def test_has_xpu_false_without_hardware(self):
         import ascend_compat
+
         assert ascend_compat.has_xpu() is False
